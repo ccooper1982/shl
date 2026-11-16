@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cctype>
 #include <expected>
 #include <filesystem>
 #include <string_view>
@@ -67,21 +68,9 @@ std::expected<Expected, ShlError> make_error(const std::string_view msg)
 
 inline std::string_view trim_ws(std::string_view str)
 {
-  const auto pos = str.find_last_not_of(" \t\n\r\f\v");
-
-  if (pos == std::string_view::npos) {
-    return str;
+  while (!str.empty() && std::isspace(static_cast<unsigned char>(str.back()))) {
+    str.remove_suffix(1);
   }
 
-  return str.substr(0, pos + 1);
+  return str;
 }
-
-
-// bool string_to_number (const std::string_view src, auto& v)
-// {
-//   v = {};
-//   const auto end = src.data()+src.size();
-//   const auto [ptr, ec] = std::from_chars(src.data(), end, v);
-//
-//   return ec != std::errc::result_out_of_range && ec != std::errc::invalid_argument && ptr == end;
-// }

@@ -2,20 +2,100 @@
 
 /#
 Use a shl script to test shl, marking its own homework.
+Path for test files is in argv[0]:
 #/
 
 path := home()+"/projects/shl/tests/scripts";
 shl := home()+"/projects/shl/build/shl";
 
-script := path + "/sequence.shl";
 
-pipeline := proc(shl, script);
+sequence();
+environment();
+files();
 
-result := to_int(exec_stdout(exec(pipeline)));
 
-check(19, result);
+fn sequence ()
+{
+    script := path + "/sequence.shl";
 
-fn check(expected: int, result: int)
+    pipeline := proc(shl, script);
+    result := to_int(exec_stdout(exec(pipeline)));
+
+    check_int(19, result);
+}
+
+fn environment ()
+{
+    script := path + "/env.shl";
+    pipeline := proc(shl, script);
+    result := exec_stdout(exec(pipeline));
+
+    check_str("hello world", result);
+}
+
+fn files ()
+{
+    tmp_root := home()+"/projects/shl/build/tmp";
+
+    if (env_exists("SHL_TEST_TMP")) {
+        tmp_root = env("SHL_TEST_TMP");
+    }
+
+    println("Using tmp root: ", tmp_root);
+
+    tmp_dir := tmp_root + "/files";
+
+    # rm the temp dir via `rm` just in case it exists (ignore error if it doesn't)
+    # it'd be incorrect to delete via shl because we need to test it
+    # under stricter conditions
+    rm_result := exec(proc("rm", "-r", tmp_dir));
+
+    # create tmp_dir
+    check_bool(false, path_exists(tmp_dir));
+    check_bool(true, dir_create(tmp_dir));
+    check_bool(true, path_exists(tmp_dir));
+
+    # when root required
+    invalid_file := "/etc/anything_not_root";
+    invalid_dir := "/etc/anything_not_root";
+
+    check_bool(false, file_create(invalid_file));
+    check_int(13, error_code());
+    check_str("Permission denied", error_message());
+
+    check_bool(false, file_create(invalid_dir));
+    check_int(13, error_code());
+    check_str("Permission denied", error_message());
+
+    exec(proc("rm", "-r", tmp_root));
+}
+
+
+# don't support overloading, or templates so need this abomination for now
+
+fn check_bool(expected: bool, result: bool)
+{
+    if (expected == result) {
+        println ("PASS: ", result);
+    }
+    else {
+        println ("FAIL: ", result);
+        exit(1);
+    }
+}
+
+fn check_int(expected: int, result: int)
+{
+    if (expected == result) {
+        println ("PASS: ", result);
+    }
+    else {
+        println ("FAIL: ", result);
+        exit(1);
+    }
+}
+
+fn check_str(expected: str, result: str)
 {
     if (expected == result) {
         println ("PASS: ", result);

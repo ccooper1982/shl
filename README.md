@@ -1,20 +1,13 @@
-# shl
-C++ Pythony, an alternative to shell script.
-
-Mostly experimenting with Tree-sitter and creating an AST.
+SHell Language, an alternative for shell scripting.
 
 ```
-p1 := proc("cat", "/etc/hosts");
-p1_result := exec(p1);
+pipeline := proc("seq", 1, 100)
+          | proc("grep", 5)
+          | proc("wc", "-l");
 
-println ("Result: ", exit_status(p1_result));
+result := exec(pipeline);
 
-if (exit_status(p1_result) == 0) {
-    println (p1_result);
-}
-else {
-    println ("It failed");
-}
+print(result);
 ```
 
 # Aim
@@ -22,18 +15,24 @@ else {
 - No config files or virtual environment required
 - Integrated knowledge of pipes and processes
 - No memory management
-- Type safety
+- Type checks
 
 
 # Build
 ```
 cd grammar && tree-sitter generate
 cd ..
-meson setup build
+meson setup build -Dbuildtype=release
 meson compile -C build
 ```
 
-# Test
+Or to use `clang` explicitly:
+
+```
+meson setup build --native-file meson/clang.ini -Dbuildtype=release
+```
+
+# Tests
 ```
 meson test -C build
 ```
@@ -54,9 +53,4 @@ meson test -C build
 ## Environment Vars
 - Get
 - Set
-- Search
-
-```
-home := env_get("HOME");
-env_create("BUILD_DIR", home + "/projects/blah/build");
-```
+- Exists

@@ -1,7 +1,7 @@
 #! /home/callum/projects/shl/build/shl
 
-pipeline := proc("seq", "1", "100")
-          | proc("grep", "5")
+pipeline := proc("seq", 1, 100)
+          | proc("grep", 5)
           | proc("wc", "-l");
 
 result := exec(pipeline);

@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <system_error>
 #include <variant>
 #include <vector>
 #include <type_traits>
@@ -20,9 +21,9 @@ struct Process
 
 struct Pipeline
 {
-    std::vector<Process> processes;
+  std::vector<Process> processes;
 
-    bool operator==(const Pipeline&) const = default;
+  bool operator==(const Pipeline&) const = default;
 };
 
 struct ExecResult
@@ -223,9 +224,6 @@ VarValue make_value (T v)
   if constexpr (std::is_same_v<T, ShlBool>) {
     return ShlBool(v);
   }
-  else if constexpr (std::is_same_v<T, Process>) {
-    return Process{};
-  }
   else if constexpr (std::is_integral_v<T>) {
     return ShlInt(v);
   }
@@ -238,6 +236,11 @@ VarValue make_value (T v)
   else {
     static_assert(false, "Unsupported VarValue type");
   }
+}
+
+inline VarValue make_void_value()
+{
+  return std::monostate{};
 }
 
 struct ResolvedSymbol
@@ -269,11 +272,11 @@ using ResolvedVariableMap = std::map<std::string_view, const ResolvedSymbol>;
 struct RuntimeContext
 {
   std::vector<std::string> argv;
+  std::error_code err_code{};
 };
 
 
-
-using NativeFunction = VarValue (*)(const RuntimeContext&, const std::span<const VarValue>);
+using NativeFunction = VarValue (*)(RuntimeContext&, const std::span<const VarValue>);
 
 struct NativeFunctionDef
 {

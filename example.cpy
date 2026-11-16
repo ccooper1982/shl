@@ -1,6 +1,9 @@
 
+
 fn test1()
 {
+    print_test(1);
+
     pipeline := proc("find", home()+"/projects/shl", "-type", "f", "-name", "*.cpp")
               | proc("wc", "-l");
 
@@ -17,35 +20,49 @@ fn test1()
 
 fn test2()
 {
+    print_test(2);
+
     pipeline := proc("seq", 1, 100000)
-            | proc("grep", 5)
-            | proc("sort", "-r")
-            | proc("wc", "-l");
+             | proc("grep", 5)
+             | proc("sort", "-r")
+             | proc("wc", "-l");
 
     result := exec(pipeline);
 
-    println("Exit status: ", exit_status(result));
-    println("Count: ", result);
+    if (exit_status(result) == 0) {
+        println("Count: ", result);
+    }
+    else {
+        println("Exit status: ", exit_status(result));
+    }
 }
 
 
 fn test3()
 {
-    pipeline := proc("printf", "hello\nworld\n")
-            | proc("grep", "banana");
+    print_test(3);
+
+    pipeline := proc("printf", "hello world")
+             | proc("grep", "banana");
 
     result := exec(pipeline);
 
-    println("Exit status: ", exit_status(result));
-    println("Output: [", result, "]");
+    if (exit_status(result) == 0) {
+        println("Output: [", result, "]");
+    }
+    else {
+        println("Exit status: ", exit_status(result));
+    }
 }
 
 
 fn test4()
 {
+    print_test(4);
+
     pipeline := proc("seq", "1", "100000")
-            | proc("grep", "5")
-            | proc("wc", "-l");
+             | proc("grep", "5")
+             | proc("wc", "-l");
 
     result := exec(pipeline);
 
@@ -53,23 +70,46 @@ fn test4()
     println("Numbers containing 5: ", result);
 }
 
-i := 4;
-d := 4.5;
-b := false;
+fn test5()
+{
+    print_test(5);
 
-println(to_str(i));
-println(to_str(d));
-println(to_str(b));
+    println(env_exists("ZABC"));
+    env_set("ZABC", "hello");
+    println(env("ZABC"));
+    println(env_exists("ZABC"));
+}
 
-println(to_dec(i));
+fn test6()
+{
+    print_test(6);
 
-println(to_bool("true"));
+    dir := home()+"/projects/shl/tests/tmp";
 
-println(env("SHELL"));
+    println(path_exists(dir));
+    println(dir_create(dir));
+    println(path_exists(dir));
+    println(file_create(dir + "/a.txt"));
 
-/#
+    println(dir_create("/etc/abc_noperms"));
+    println("Code: ", error_code(), " Reason: ", error_message());
+
+    println(dir_create("/tmp/shl_test_dir"));
+    println(error_code());
+}
+
+fn print_test(n: int)
+{
+    println("-------");
+    println("Test: " , n);
+    println("-------");
+}
+
+
+
 test1();
 test2();
 test3();
 test4();
-#/
+test5();
+test6();

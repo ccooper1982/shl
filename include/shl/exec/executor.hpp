@@ -165,7 +165,7 @@ struct ExecutionResult
 class Executor
 {
 public:
-  Executor(const SymbolTable& sym_table, const RuntimeContext& rt_context);
+  Executor(const SymbolTable& sym_table, RuntimeContext& rt_context);
 
   #ifdef CPY_UNIT_TESTS
     virtual ~Executor(){}
@@ -207,7 +207,7 @@ private:
 
 private:
   const SymbolTable& m_sym_table;
-  const RuntimeContext& m_rt_context;
+  RuntimeContext& m_rt_context;
 };
 
 
@@ -222,14 +222,14 @@ class TestExecutor : public Executor
 {
 public:
   TestExecutor(const SymbolTable& sym_table, OnStackPush on_push, OnStackPop on_pop)
-    : Executor(sym_table, RuntimeContext{})
+    : Executor(sym_table, m_rc)
     , m_on_push(on_push)
     , m_on_pop(on_pop)
     {
     }
 
     TestExecutor(const SymbolTable& sym_table, OnStackPop on_pop)
-      : Executor(sym_table, RuntimeContext{})
+      : Executor(sym_table, m_rc)
       , m_on_push()
       , m_on_pop(on_pop)
       {
@@ -263,6 +263,7 @@ public:
     }
 
 private:
+  RuntimeContext m_rc;
   OnStackPush m_on_push;
   OnStackPop m_on_pop;
 };

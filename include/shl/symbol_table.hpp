@@ -11,6 +11,7 @@
 
 #include <shl/ast/ast.hpp>
 #include <shl/exec/core.hpp>
+#include <shl/exec/file.hpp>
 #include <shl/exec/proc.hpp>
 #include <shl/functional.hpp>
 
@@ -77,7 +78,7 @@ public:
 
   bool has_native_function(const std::string_view name) const
   {
-    return NativeCoreFunctions.contains(name) || NativeProcFunctions.contains(name);
+    return NativeCoreFunctions.contains(name) || NativeProcFunctions.contains(name) || NativeFileFunctions.contains(name);
   }
 
   void add_variable(const std::string_view name, const VarType type, const uint32_t position);
@@ -118,6 +119,9 @@ public:
       return it->second;
     }
     else if (it = get_native(NativeProcFunctions); it != rg::end(NativeProcFunctions)) {
+      return it->second;
+    }
+    else if (it = get_native(NativeFileFunctions); it != rg::end(NativeFileFunctions)) {
       return it->second;
     }
 
