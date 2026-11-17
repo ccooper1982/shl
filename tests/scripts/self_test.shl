@@ -7,11 +7,19 @@ Path for test files is in argv[0]:
 
 path := home()+"/projects/shl/tests/scripts";
 shl := home()+"/projects/shl/build/shl";
+tmp_root := home()+"/projects/shl/build/tmp";
 
+# meson sets a tmp path when calling
+if (env_exists("SHL_TEST_TMP")) {
+    tmp_root = env("SHL_TEST_TMP");
+}
+
+println("Using tmp root: ", tmp_root);
 
 sequence();
 environment();
-files();
+filesystem_create();
+filesystem_rmv();
 
 
 fn sequence ()
@@ -33,22 +41,14 @@ fn environment ()
     check_str("hello world", result);
 }
 
-fn files ()
+fn filesystem_create ()
 {
-    tmp_root := home()+"/projects/shl/build/tmp";
+    tmp_dir := tmp_root + "/fs_create";
 
-    if (env_exists("SHL_TEST_TMP")) {
-        tmp_root = env("SHL_TEST_TMP");
-    }
-
-    println("Using tmp root: ", tmp_root);
-
-    tmp_dir := tmp_root + "/files";
-
-    # rm the temp dir via `rm` just in case it exists (ignore error if it doesn't)
-    # it'd be incorrect to delete via shl because we need to test it
-    # under stricter conditions
-    rm_result := exec(proc("rm", "-r", tmp_dir));
+    # rm the temp dir via `rm` just in case it exists (ignore error if it doesn't).
+    # it's incorrect to delete via shl because we need to test it
+    rmv_result := exec(proc("rm", "-rf", tmp_dir));
+    check_bool(true, exec_success(rmv_result));
 
     # create tmp_dir
     check_bool(false, path_exists(tmp_dir));
@@ -67,11 +67,38 @@ fn files ()
     check_int(13, error_code());
     check_str("Permission denied", error_message());
 
-    exec(proc("rm", "-r", tmp_root));
+    exec(proc("rm", "-rf", tmp_root));
+}
+
+fn filesystem_rmv ()
+{
+    wd := tmp_root + "/fs_rmv";
+
+    rmv_result := exec(proc("rm", "-rf", wd));
+    check_bool(true, exec_success(rmv_result));
+
+    check_bool(true, dir_create(wd));
+
+    # delete a file
+    check_bool(true, file_create(wd+"/foo.txt"));
+    check_bool(true, path_exists(wd+"/foo.txt"));
+    check_bool(true, path_rmv(wd+"/foo.txt"));
+    check_bool(false, path_exists(wd+"/foo.txt"));
+
+    # delete an empty dir with path_rmv()
+    check_bool(true, dir_create(wd+"/foo"));
+    check_bool(true, path_exists(wd+"/foo"));
+    check_bool(true, path_rmv(wd+"/foo"));
+    check_bool(false, path_exists(wd+"/foo"));
+
+    # delete a dir containing a file (file_create() creates intermediate dirs)
+    check_bool(true, file_create(wd+"/foo/foo.txt"));
+    check_bool(true, path_rmv_dir(wd+"/foo"));
+    check_bool(false, path_exists(wd+"/foo"));
 }
 
 
-# don't support overloading, or templates so need this abomination for now
+# don't support overloading, templates or variants so need this abomination
 
 fn check_bool(expected: bool, result: bool)
 {

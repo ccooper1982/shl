@@ -32,9 +32,7 @@ namespace file
   {
     const fs::path path {std::get<ShlString>(args[0])};
 
-    std::error_code ec;
-    fs::create_directories(path, ec);
-    rc.err_code = ec;
+    fs::create_directories(path, rc.err_code);
     return !rc.err_code;
   }
 
@@ -42,12 +40,19 @@ namespace file
   {
     const fs::path path {std::get<ShlString>(args[0])};
 
-    std::error_code ec;
-    const auto exists = fs::exists(path, ec);
+    rc.err_code.clear();
+    return !rc.err_code && fs::exists(path, rc.err_code);
+  }
 
-    if (ec) {
-      rc.err_code = ec;
-    }
-    return !rc.err_code && exists;
+  VarValue path_rmv(RuntimeContext& rc, const std::span<const VarValue> args)
+  {
+    fs::remove(std::get<ShlString>(args[0]), rc.err_code);
+    return !rc.err_code;
+  }
+
+  VarValue path_rmv_dir(RuntimeContext& rc, const std::span<const VarValue> args)
+  {
+    fs::remove_all(std::get<ShlString>(args[0]), rc.err_code);
+    return !rc.err_code;
   }
 }

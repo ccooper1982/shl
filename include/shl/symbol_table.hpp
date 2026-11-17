@@ -128,7 +128,7 @@ public:
     throw std::runtime_error{std::format("get_function() called unexpectedly with: {}", name)};
   }
 
-  /// Gets a resolved variable, checking the NodeBlock's scope, then checking each
+  /// Get a resolved variable, checking the NodeBlock's scope, then checking each
   /// parent until it is found.
   /// Throws if the variable does not exist: has_visible_variable() should return
   /// true prior to calling get_variable().
@@ -144,8 +144,6 @@ public:
 
 private:
   const ResolvedSymbol * get_resolved_variable(const std::string_view name, const NodeBlock * block, const bool visit_parents) const;
-
-
 
 private:
   std::map<std::string_view, const ResolvedFunction> m_resolved_functions;

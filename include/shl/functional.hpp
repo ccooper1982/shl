@@ -194,8 +194,6 @@ inline std::string_view to_string(const VarType& t)
   }
 }
 
-
-
 inline std::string to_string(const VarValue& v)
 {
   return std::visit([](const auto val) -> std::string
@@ -287,11 +285,22 @@ struct NativeFunctionDef
 
 
 template<auto F>
-auto create_function(std::string_view name, std::initializer_list<ResolvedSymbol> params, NativeType return_type, ParamMode param_mode, size_t min_args = 0)
+auto create_function(std::string_view name, std::initializer_list<ResolvedSymbol> params, NativeType return_type, ParamMode param_mode = ParamMode::Fixed, size_t min_args = 0)
 {
   using FunctionEntry = std::pair<std::string_view, NativeFunctionDef>;
 
   ResolvedFunction func {std::vector<ResolvedSymbol>{params}, return_type, param_mode};
+  return FunctionEntry {name, {std::move(func), F, min_args}};
+}
 
+/// Create a function without any Fixed params, or a function with Variadic params.
+/// The params for a variadic function are not listed because each param needs a type, which
+/// is not known until script execution, so only the min_args are needed
+template<auto F>
+auto create_function(std::string_view name, NativeType return_type, ParamMode param_mode = ParamMode::Fixed, size_t min_args = 0)
+{
+  using FunctionEntry = std::pair<std::string_view, NativeFunctionDef>;
+
+  ResolvedFunction func {.params = {}, .return_type = return_type, .param_mode = param_mode};
   return FunctionEntry {name, {std::move(func), F, min_args}};
 }

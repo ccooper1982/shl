@@ -11,6 +11,7 @@
 #include <shl/exec/proc.hpp>
 #include <system_error>
 #include <unistd.h>
+#include <variant>
 
 
 extern "C" {
@@ -189,6 +190,8 @@ namespace proc {
 
   VarValue exec (RuntimeContext& rc, const std::span<const VarValue> args)
   {
+    rc.err_code.clear();
+
     if (const auto * proc = std::get_if<Process>(&args[0]); proc)
     {
       Pipeline pipeline = {{*proc}};
@@ -204,18 +207,35 @@ namespace proc {
     }
   }
 
+  VarValue exec_success (RuntimeContext&, const std::span<const VarValue> args)
+  {
+    if (std::holds_alternative<std::monostate>(args[0]))
+      return false;
+
+    return static_cast<ShlInt>(std::get<ExecResult>(args[0]).exit_status) == 0;
+  }
+
   VarValue exit_status (RuntimeContext&, const std::span<const VarValue> args)
   {
+    if (std::holds_alternative<std::monostate>(args[0]))
+      return false;
+
     return static_cast<ShlInt>(std::get<ExecResult>(args[0]).exit_status);
   }
 
   VarValue exec_stdout (RuntimeContext&, const std::span<const VarValue> args)
   {
+    if (std::holds_alternative<std::monostate>(args[0]))
+      return false;
+
     return std::get<ExecResult>(args[0]).stdout; // TODO this copies
   }
 
   VarValue exec_stdout_trim (RuntimeContext&, const std::span<const VarValue> args)
   {
+    if (std::holds_alternative<std::monostate>(args[0]))
+      return false;
+
     auto trimmed = trim_ws(std::get<ExecResult>(args[0]).stdout);
     return ShlString{trimmed}; // TODO this copies
   }

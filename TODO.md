@@ -1,9 +1,6 @@
 # TODO
 
-## env
-Access environment variables:
-- `env_set(str: name, str: val)`
-- `env_exists(str: name) -> bool`
+# Library
 
 ## filesystem
 - `file_create_sym(src: str, target: str)`
@@ -22,7 +19,15 @@ Access environment variables:
 - `str_equals_icase() -> bool`
 - `str_contains() -> bool`
 
-### for each
+## Time
+- `time() -> int` 
+- `time_add() -> int`
+- `time_add_seconds() -> int`
+- `time_add_days() -> int`
+
+# Language
+
+## for each
 ```
 for (<variable_decl_assign_expr> in <variable:array>)
 {
@@ -38,9 +43,7 @@ for ([init_expr] ; <condition_expr:bool> ; [iteration_expr])
 }
 ```
 
-## Containers
-
-### Sequence
+## Sequence
 
 List:
 - All elements must have the same type
@@ -52,7 +55,7 @@ list_ok := ["abc", "def", "ghi"];
 list_ok.append("jkl");
 ```
 
-### Associative
+## Associative
 Map:
 - All keys must the same type
 - All values must be the same type

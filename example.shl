@@ -1,0 +1,10 @@
+
+path := home()+"/projects/shl/tests/scripts";
+shl := home()+"/projects/shl/build/shl";
+
+script := path + "/sequence.shl";
+
+pipeline := proc(shl, script);
+result := exec_success(exec(pipeline));
+
+println(result);
