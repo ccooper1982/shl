@@ -4,13 +4,11 @@
 
 ## filesystem
 - `file_create_sym(src: str, target: str)`
-- `file_rmv(path: str)`
-- `dir_rmv(path: str)`
 - `file_set_perms(path: str, perms: int)` - set permissions
-- `file_perms(path: str) -> int` - get permissions
-- `file_is_dir(path: str) -> bool` 
-- `dir_list(path: str)` - list of files in dir (not recursive)
-- `path_exists(path: str)`
+- `path_perms(path: str) -> int` - get permissions
+
+### Future
+- `dir_list(path: str) -> array<str>` - requires arrays
 
 ## string
 - `str_empty() -> bool`

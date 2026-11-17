@@ -2,26 +2,32 @@
 
 /#
 Use a shl script to test shl, marking its own homework.
-Path for test files is in argv[0]:
 #/
 
 path := home()+"/projects/shl/tests/scripts";
 shl := home()+"/projects/shl/build/shl";
-tmp_root := home()+"/projects/shl/build/tmp";
+tests_wd := home()+"/projects/shl/build/tmp";
 
-# meson sets a tmp path when calling
+# meson.build sets a path when running tests
 if (env_exists("SHL_TEST_TMP")) {
-    tmp_root = env("SHL_TEST_TMP");
+    tests_wd = env("SHL_TEST_TMP");
 }
 
-println("Using tmp root: ", tmp_root);
+# clear working directory
+println("Clearing working dir: ", tests_wd);
+exec(proc("rm", "-rf", tests_wd));
+
 
 sequence();
 environment();
 filesystem_create();
 filesystem_rmv();
+filesystem_type();
 
+# tidy up
+exec(proc("rm", "-rf", tests_wd));
 
+# tests
 fn sequence ()
 {
     script := path + "/sequence.shl";
@@ -43,41 +49,32 @@ fn environment ()
 
 fn filesystem_create ()
 {
-    tmp_dir := tmp_root + "/fs_create";
+    wd_dir := tests_wd + "/fs_create";
+    check_bool(true, rmv_wd(wd_dir, false));
 
-    # rm the temp dir via `rm` just in case it exists (ignore error if it doesn't).
-    # it's incorrect to delete via shl because we need to test it
-    rmv_result := exec(proc("rm", "-rf", tmp_dir));
-    check_bool(true, exec_success(rmv_result));
+    # create
+    check_bool(false, path_exists(wd_dir));
+    check_bool(true, dir_create(wd_dir));
+    check_bool(true, path_exists(wd_dir));
 
-    # create tmp_dir
-    check_bool(false, path_exists(tmp_dir));
-    check_bool(true, dir_create(tmp_dir));
-    check_bool(true, path_exists(tmp_dir));
+    # attempt when root required
+    need_root_path := "/etc/i_need_root";
 
-    # when root required
-    invalid_file := "/etc/anything_not_root";
-    invalid_dir := "/etc/anything_not_root";
-
-    check_bool(false, file_create(invalid_file));
+    check_bool(false, file_create(need_root_path));
     check_int(13, error_code());
     check_str("Permission denied", error_message());
 
-    check_bool(false, file_create(invalid_dir));
+    check_bool(false, file_create(need_root_path));
     check_int(13, error_code());
     check_str("Permission denied", error_message());
-
-    exec(proc("rm", "-rf", tmp_root));
 }
 
 fn filesystem_rmv ()
 {
-    wd := tmp_root + "/fs_rmv";
+    wd := tests_wd + "/fs_rmv";
+    check_bool(true, rmv_wd(wd, true));
 
-    rmv_result := exec(proc("rm", "-rf", wd));
-    check_bool(true, exec_success(rmv_result));
-
-    check_bool(true, dir_create(wd));
+    # check_bool(true, dir_create(wd));
 
     # delete a file
     check_bool(true, file_create(wd+"/foo.txt"));
@@ -97,15 +94,48 @@ fn filesystem_rmv ()
     check_bool(false, path_exists(wd+"/foo"));
 }
 
+fn filesystem_type ()
+{
+    wd := tests_wd + "/fs_type";
+    check_bool(true, rmv_wd(wd, true));
 
-# don't support overloading, templates or variants so need this abomination
+    check_bool(true, dir_create(wd));
+    check_bool(true, path_is_dir(wd));
+    check_bool(false, path_is_file(wd));
+
+    check_bool(true, file_create(wd+"/file1.txt"));
+    check_bool(false, path_is_dir(wd+"/file1.txt"));
+    check_bool(true, path_is_file(wd+"/file1.txt"));
+}
+
+
+# utils
+fn rmv_wd(wd: str, create: bool) -> bool
+{
+    # delete working dirs via `rm` rather than shl's functions, since
+    # we're testing shl
+    rmv_result := exec_success(exec(proc("rm", "-rf", wd)));
+
+    ok := rmv_result;
+
+    if (ok && create) {
+        ok = dir_create(wd) && error_code() == 0;
+    }
+
+    return ok;
+}
+
+
+# report result
+# - don't support overloading, templates or variants so need this abomination
 
 fn check_bool(expected: bool, result: bool)
 {
     if (expected == result) {
         println ("PASS: ", result);
     }
-    else {
+    else
+    {
         println ("FAIL: ", result);
         exit(1);
     }
@@ -116,7 +146,8 @@ fn check_int(expected: int, result: int)
     if (expected == result) {
         println ("PASS: ", result);
     }
-    else {
+    else
+    {
         println ("FAIL: ", result);
         exit(1);
     }
@@ -127,7 +158,8 @@ fn check_str(expected: str, result: str)
     if (expected == result) {
         println ("PASS: ", result);
     }
-    else {
+    else
+    {
         println ("FAIL: ", result);
         exit(1);
     }
