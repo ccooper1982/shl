@@ -11,6 +11,7 @@
 
 #include <shl/ast/ast.hpp>
 #include <shl/exec/core.hpp>
+#include <shl/exec/file.hpp>
 #include <shl/exec/proc.hpp>
 #include <shl/functional.hpp>
 
@@ -77,7 +78,7 @@ public:
 
   bool has_native_function(const std::string_view name) const
   {
-    return NativeCoreFunctions.contains(name) || NativeProcFunctions.contains(name);
+    return NativeCoreFunctions.contains(name) || NativeProcFunctions.contains(name) || NativeFileFunctions.contains(name);
   }
 
   void add_variable(const std::string_view name, const VarType type, const uint32_t position);
@@ -120,11 +121,14 @@ public:
     else if (it = get_native(NativeProcFunctions); it != rg::end(NativeProcFunctions)) {
       return it->second;
     }
+    else if (it = get_native(NativeFileFunctions); it != rg::end(NativeFileFunctions)) {
+      return it->second;
+    }
 
     throw std::runtime_error{std::format("get_function() called unexpectedly with: {}", name)};
   }
 
-  /// Gets a resolved variable, checking the NodeBlock's scope, then checking each
+  /// Get a resolved variable, checking the NodeBlock's scope, then checking each
   /// parent until it is found.
   /// Throws if the variable does not exist: has_visible_variable() should return
   /// true prior to calling get_variable().
@@ -140,8 +144,6 @@ public:
 
 private:
   const ResolvedSymbol * get_resolved_variable(const std::string_view name, const NodeBlock * block, const bool visit_parents) const;
-
-
 
 private:
   std::map<std::string_view, const ResolvedFunction> m_resolved_functions;

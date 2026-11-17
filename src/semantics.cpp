@@ -246,16 +246,11 @@ VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const
   const auto& resolved_func = m_symbol_table.get_function(call.name);
   const bool is_variadic = resolved_func.param_mode == ParamMode::VariadicAny;
   const auto supplied_arg_count = call.args.size();
+  const auto expected_arg_count = is_variadic ? m_symbol_table.get_native_function_min_args(call.name) : resolved_func.params.size();
 
-  if (is_native_function)
-  {
-    if (is_variadic && supplied_arg_count < m_symbol_table.get_native_function_min_args(call.name))
-    {
-      issue::func_arg_count(ctx.issues, call);
-      return unresolved_type;
-    }
-  }
-  else if (!is_variadic && supplied_arg_count != resolved_func.params.size())
+  // fixed: arg counts must match
+  // variadic: arg count must be at least the minimum
+  if ((!is_variadic && supplied_arg_count != expected_arg_count) || (is_variadic && supplied_arg_count < expected_arg_count))
   {
     issue::func_arg_count(ctx.issues, call);
     return unresolved_type;

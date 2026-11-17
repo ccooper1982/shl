@@ -6,7 +6,6 @@
 
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <print>
 #include <pwd.h>
 #include <string>
@@ -19,7 +18,7 @@
 
 namespace core {
 
-VarValue print(const RuntimeContext&, const std::span<const VarValue> args)
+VarValue print(RuntimeContext&, const std::span<const VarValue> args)
 {
   for(const auto& val : args)
   {
@@ -43,17 +42,28 @@ VarValue print(const RuntimeContext&, const std::span<const VarValue> args)
       val);
   }
 
-  return std::monostate{};
+  return make_void_value();
 }
 
-VarValue println(const RuntimeContext& ctx, const std::span<const VarValue> args)
+VarValue println(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   print(ctx, args);
   std::println();
-  return std::monostate{};
+  return make_void_value();
 }
 
-VarValue exit(const RuntimeContext&, const std::span<const VarValue> args)
+
+VarValue error_code(RuntimeContext& rc, const std::span<const VarValue>)
+{
+  return rc.err_code.value();
+}
+
+VarValue error_message(RuntimeContext& rc, const std::span<const VarValue>)
+{
+  return rc.err_code.message();
+}
+
+VarValue exit(RuntimeContext&, const std::span<const VarValue> args)
 {
   const int status = args.empty() ? 0 : static_cast<int>(std::get<ShlInt>(args[0]));
 
@@ -63,7 +73,7 @@ VarValue exit(const RuntimeContext&, const std::span<const VarValue> args)
   throw ScriptExit {status};
 }
 
-VarValue home(const RuntimeContext&, const std::span<const VarValue>)
+VarValue home(RuntimeContext&, const std::span<const VarValue>)
 {
   if (const char* home = std::getenv("HOME"); home && *home) {
     return std::string{home};
@@ -84,10 +94,25 @@ VarValue home(const RuntimeContext&, const std::span<const VarValue>)
   }
 }
 
-VarValue env(const RuntimeContext&, const std::span<const VarValue> args)
+// env //
+VarValue env(RuntimeContext&, const std::span<const VarValue> args)
 {
   const auto * value = std::getenv(std::get<ShlString>(args[0]).data());
-  return value ? ShlString{value} : ShlString{""};
+  return ShlString {value ? value : ""};
+}
+
+VarValue env_set(RuntimeContext&, const std::span<const VarValue> args)
+{
+  const auto name = std::get<ShlString>(args[0]).data();
+  const auto value = std::get<ShlString>(args[1]).data();
+
+  ::setenv(name, value, 1);
+  return make_void_value();
+}
+
+VarValue env_exists(RuntimeContext&, const std::span<const VarValue> args)
+{
+  return std::getenv(std::get<ShlString>(args[0]).data()) != nullptr;
 }
 
 // conversion //
@@ -135,22 +160,22 @@ VarValue value_cast(const VarValue& from)
   return std::visit(convert, from);
 }
 
-VarValue to_int(const RuntimeContext&, const std::span<const VarValue> args)
+VarValue to_int(RuntimeContext&, const std::span<const VarValue> args)
 {
   return value_cast<ShlInt>(args[0]);
 }
 
-VarValue to_dec(const RuntimeContext&, const std::span<const VarValue> args)
+VarValue to_dec(RuntimeContext&, const std::span<const VarValue> args)
 {
   return value_cast<ShlDec>(args[0]);
 }
 
-VarValue to_bool(const RuntimeContext&, const std::span<const VarValue> args)
+VarValue to_bool(RuntimeContext&, const std::span<const VarValue> args)
 {
   return value_cast<ShlBool>(args[0]);
 }
 
-VarValue to_str(const RuntimeContext&, const std::span<const VarValue> args)
+VarValue to_str(RuntimeContext&, const std::span<const VarValue> args)
 {
   return value_cast<ShlString>(args[0]);
 }
@@ -163,7 +188,7 @@ bool to_var_value (const std::string_view arg, auto& val)
   return ec == std::errc{} && ptr == arg.data() + arg.size();
 }
 
-size_t get_argv_index(const RuntimeContext& ctx, const std::span<const VarValue> args)
+size_t get_argv_index(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   const auto index = std::get<ShlInt>(args[0]);
 
@@ -173,13 +198,13 @@ size_t get_argv_index(const RuntimeContext& ctx, const std::span<const VarValue>
   return static_cast<size_t>(index);
 }
 
-VarValue get_argv_str(const RuntimeContext& ctx, const std::span<const VarValue> args)
+VarValue get_argv_str(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   const auto index = get_argv_index(ctx, args);
   return ctx.argv[index];
 }
 
-VarValue get_argv_int(const RuntimeContext& ctx, const std::span<const VarValue> args)
+VarValue get_argv_int(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   const auto index = get_argv_index(ctx, args);
   if (ShlInt val; to_var_value(ctx.argv[index], val))  {
@@ -189,7 +214,7 @@ VarValue get_argv_int(const RuntimeContext& ctx, const std::span<const VarValue>
   throw RuntimeError{std::format("argv {} cannot be parsed as an integer", index)};
 }
 
-VarValue get_argv_dec(const RuntimeContext& ctx, const std::span<const VarValue> args)
+VarValue get_argv_dec(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   const auto index = get_argv_index(ctx, args);
   if (ShlDec val; to_var_value(ctx.argv[index], val))  {
@@ -199,7 +224,7 @@ VarValue get_argv_dec(const RuntimeContext& ctx, const std::span<const VarValue>
   throw RuntimeError{std::format("argv {} cannot be parsed as an decimal", index)};
 }
 
-VarValue get_argv_bool(const RuntimeContext& ctx, const std::span<const VarValue> args)
+VarValue get_argv_bool(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   const auto index = get_argv_index(ctx, args);
   const std::string_view val = ctx.argv[index];
@@ -215,7 +240,7 @@ VarValue get_argv_bool(const RuntimeContext& ctx, const std::span<const VarValue
   throw RuntimeError{std::format("argv {} cannot be parsed as a boolean", index)};
 }
 
-VarValue get_argc(const RuntimeContext& ctx, const std::span<const VarValue>)
+VarValue get_argc(RuntimeContext& ctx, const std::span<const VarValue>)
 {
   return static_cast<ShlInt>(ctx.argv.size());
 }

@@ -2,6 +2,7 @@
 
 #include <map>
 #include <string>
+#include <system_error>
 #include <variant>
 #include <vector>
 #include <type_traits>
@@ -20,9 +21,9 @@ struct Process
 
 struct Pipeline
 {
-    std::vector<Process> processes;
+  std::vector<Process> processes;
 
-    bool operator==(const Pipeline&) const = default;
+  bool operator==(const Pipeline&) const = default;
 };
 
 struct ExecResult
@@ -193,8 +194,6 @@ inline std::string_view to_string(const VarType& t)
   }
 }
 
-
-
 inline std::string to_string(const VarValue& v)
 {
   return std::visit([](const auto val) -> std::string
@@ -223,9 +222,6 @@ VarValue make_value (T v)
   if constexpr (std::is_same_v<T, ShlBool>) {
     return ShlBool(v);
   }
-  else if constexpr (std::is_same_v<T, Process>) {
-    return Process{};
-  }
   else if constexpr (std::is_integral_v<T>) {
     return ShlInt(v);
   }
@@ -238,6 +234,11 @@ VarValue make_value (T v)
   else {
     static_assert(false, "Unsupported VarValue type");
   }
+}
+
+inline VarValue make_void_value()
+{
+  return std::monostate{};
 }
 
 struct ResolvedSymbol
@@ -269,11 +270,11 @@ using ResolvedVariableMap = std::map<std::string_view, const ResolvedSymbol>;
 struct RuntimeContext
 {
   std::vector<std::string> argv;
+  std::error_code err_code{};
 };
 
 
-
-using NativeFunction = VarValue (*)(const RuntimeContext&, const std::span<const VarValue>);
+using NativeFunction = VarValue (*)(RuntimeContext&, const std::span<const VarValue>);
 
 struct NativeFunctionDef
 {
@@ -284,11 +285,22 @@ struct NativeFunctionDef
 
 
 template<auto F>
-auto create_function(std::string_view name, std::initializer_list<ResolvedSymbol> params, NativeType return_type, ParamMode param_mode, size_t min_args = 0)
+auto create_function(std::string_view name, std::initializer_list<ResolvedSymbol> params, NativeType return_type, ParamMode param_mode = ParamMode::Fixed, size_t min_args = 0)
 {
   using FunctionEntry = std::pair<std::string_view, NativeFunctionDef>;
 
   ResolvedFunction func {std::vector<ResolvedSymbol>{params}, return_type, param_mode};
+  return FunctionEntry {name, {std::move(func), F, min_args}};
+}
 
+/// Create a function without any Fixed params, or a function with Variadic params.
+/// The params for a variadic function are not listed because each param needs a type, which
+/// is not known until script execution, so only the min_args are needed
+template<auto F>
+auto create_function(std::string_view name, NativeType return_type, ParamMode param_mode = ParamMode::Fixed, size_t min_args = 0)
+{
+  using FunctionEntry = std::pair<std::string_view, NativeFunctionDef>;
+
+  ResolvedFunction func {.params = {}, .return_type = return_type, .param_mode = param_mode};
   return FunctionEntry {name, {std::move(func), F, min_args}};
 }

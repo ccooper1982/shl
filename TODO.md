@@ -1,22 +1,31 @@
 # TODO
 
-## env
-Access environment variables:
-- `env(str: name)` : returns value with `std::getenv()`
-- `env_set(str: name, str: val)`
+# Library
 
 ## filesystem
-- `file_create(path: str, overwrite: bool = false)`
-- `file_create_sym(src: str, target: str, overwrite: bool = false)`
-- `file_rmv(path: str, recurse: bool = true)`
+- `file_create_sym(src: str, target: str)`
 - `file_set_perms(path: str, perms: int)` - set permissions
-- `file_perms(path: str) -> int` - get permissions
-- `file_is_dir(path: str) -> bool` 
-- `dir_list(path: str)` - list of files in dir (not recursive)
+- `path_perms(path: str) -> int` - get permissions
 
+### Future
+- `dir_list(path: str) -> array<str>` - requires arrays
 
+## string
+- `str_empty() -> bool`
+- `str_empty() -> bool`
+- `str_equals() -> bool`
+- `str_equals_icase() -> bool`
+- `str_contains() -> bool`
 
-### for each
+## Time
+- `time() -> int` 
+- `time_add() -> int`
+- `time_add_seconds() -> int`
+- `time_add_days() -> int`
+
+# Language
+
+## for each
 ```
 for (<variable_decl_assign_expr> in <variable:array>)
 {
@@ -32,9 +41,7 @@ for ([init_expr] ; <condition_expr:bool> ; [iteration_expr])
 }
 ```
 
-## Containers
-
-### Sequence
+## Sequence
 
 List:
 - All elements must have the same type
@@ -46,7 +53,7 @@ list_ok := ["abc", "def", "ghi"];
 list_ok.append("jkl");
 ```
 
-### Associative
+## Associative
 Map:
 - All keys must the same type
 - All values must be the same type

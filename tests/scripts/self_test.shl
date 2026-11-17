@@ -6,21 +6,160 @@ Use a shl script to test shl, marking its own homework.
 
 path := home()+"/projects/shl/tests/scripts";
 shl := home()+"/projects/shl/build/shl";
+tests_wd := home()+"/projects/shl/build/tmp";
 
-script := path + "/sequence.shl";
+# meson.build sets a path when running tests
+if (env_exists("SHL_TEST_TMP")) {
+    tests_wd = env("SHL_TEST_TMP");
+}
 
-pipeline := proc(shl, script);
+# clear working directory
+println("Clearing working dir: ", tests_wd);
+exec(proc("rm", "-rf", tests_wd));
 
-result := to_int(exec_stdout(exec(pipeline)));
 
-check(19, result);
+sequence();
+environment();
+filesystem_create();
+filesystem_rmv();
+filesystem_type();
 
-fn check(expected: int, result: int)
+# tidy up
+exec(proc("rm", "-rf", tests_wd));
+
+# tests
+fn sequence ()
+{
+    script := path + "/sequence.shl";
+
+    pipeline := proc(shl, script);
+    result := to_int(exec_stdout(exec(pipeline)));
+
+    check_int(19, result);
+}
+
+fn environment ()
+{
+    script := path + "/env.shl";
+    pipeline := proc(shl, script);
+    result := exec_stdout(exec(pipeline));
+
+    check_str("hello world", result);
+}
+
+fn filesystem_create ()
+{
+    wd_dir := tests_wd + "/fs_create";
+    check_bool(true, rmv_wd(wd_dir, false));
+
+    # create
+    check_bool(false, path_exists(wd_dir));
+    check_bool(true, dir_create(wd_dir));
+    check_bool(true, path_exists(wd_dir));
+
+    # attempt when root required
+    need_root_path := "/etc/i_need_root";
+
+    check_bool(false, file_create(need_root_path));
+    check_int(13, error_code());
+    check_str("Permission denied", error_message());
+
+    check_bool(false, file_create(need_root_path));
+    check_int(13, error_code());
+    check_str("Permission denied", error_message());
+}
+
+fn filesystem_rmv ()
+{
+    wd := tests_wd + "/fs_rmv";
+    check_bool(true, rmv_wd(wd, true));
+
+    # check_bool(true, dir_create(wd));
+
+    # delete a file
+    check_bool(true, file_create(wd+"/foo.txt"));
+    check_bool(true, path_exists(wd+"/foo.txt"));
+    check_bool(true, path_rmv(wd+"/foo.txt"));
+    check_bool(false, path_exists(wd+"/foo.txt"));
+
+    # delete an empty dir with path_rmv()
+    check_bool(true, dir_create(wd+"/foo"));
+    check_bool(true, path_exists(wd+"/foo"));
+    check_bool(true, path_rmv(wd+"/foo"));
+    check_bool(false, path_exists(wd+"/foo"));
+
+    # delete a dir containing a file (file_create() creates intermediate dirs)
+    check_bool(true, file_create(wd+"/foo/foo.txt"));
+    check_bool(true, path_rmv_dir(wd+"/foo"));
+    check_bool(false, path_exists(wd+"/foo"));
+}
+
+fn filesystem_type ()
+{
+    wd := tests_wd + "/fs_type";
+    check_bool(true, rmv_wd(wd, true));
+
+    check_bool(true, dir_create(wd));
+    check_bool(true, path_is_dir(wd));
+    check_bool(false, path_is_file(wd));
+
+    check_bool(true, file_create(wd+"/file1.txt"));
+    check_bool(false, path_is_dir(wd+"/file1.txt"));
+    check_bool(true, path_is_file(wd+"/file1.txt"));
+}
+
+
+# utils
+fn rmv_wd(wd: str, create: bool) -> bool
+{
+    # delete working dirs via `rm` rather than shl's functions, since
+    # we're testing shl
+    rmv_result := exec_success(exec(proc("rm", "-rf", wd)));
+
+    ok := rmv_result;
+
+    if (ok && create) {
+        ok = dir_create(wd) && error_code() == 0;
+    }
+
+    return ok;
+}
+
+
+# report result
+# - don't support overloading, templates or variants so need this abomination
+
+fn check_bool(expected: bool, result: bool)
 {
     if (expected == result) {
         println ("PASS: ", result);
     }
-    else {
+    else
+    {
+        println ("FAIL: ", result);
+        exit(1);
+    }
+}
+
+fn check_int(expected: int, result: int)
+{
+    if (expected == result) {
+        println ("PASS: ", result);
+    }
+    else
+    {
+        println ("FAIL: ", result);
+        exit(1);
+    }
+}
+
+fn check_str(expected: str, result: str)
+{
+    if (expected == result) {
+        println ("PASS: ", result);
+    }
+    else
+    {
         println ("FAIL: ", result);
         exit(1);
     }

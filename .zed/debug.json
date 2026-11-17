@@ -22,7 +22,7 @@
       "cwd": "$ZED_WORKTREE_ROOT"
     },
     "program": "$ZED_WORKTREE_ROOT/build/shl",
-    "args": ["example.shl", "1", "2", "3.5", "some/file/path"],
+    "args": ["example.shl"],
     "request": "launch",
     "adapter": "CodeLLDB"
   },

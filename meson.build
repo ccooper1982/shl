@@ -21,6 +21,7 @@ shl_sources = files(
   'src/exec/core.cpp',
   'src/exec/proc.cpp',
   'src/exec/executor.cpp',
+  'src/exec/file.cpp',
   'src/main.cpp',
   'src/parser.cpp',
   'src/semantics.cpp',
@@ -30,7 +31,7 @@ shl_sources = files(
 
 include_dirs = include_directories('grammar/src','include')
 
-executable('shl', shl_sources,
+shl_exec = executable('shl', shl_sources,
   include_directories: include_dirs,
   dependencies: [tree_sitter],
   install: false
@@ -50,6 +51,7 @@ shl_tests = executable(
         'src/exec/core.cpp',
         'src/exec/proc.cpp',
         'src/exec/executor.cpp',
+        'src/exec/file.cpp',
         'grammar/src/parser.c'
   ),
   include_directories: include_dirs,
@@ -58,3 +60,10 @@ shl_tests = executable(
 )
 
 test('shl tests', shl_tests, workdir: meson.project_source_root())
+
+test_tmp = meson.project_build_root() / 'shl_test_tmp'
+test('shl_self_test',
+    shl_exec,
+    args: [meson.project_source_root() / 'tests' / 'scripts' / 'self_test.shl'],
+    env: ['SHL_TEST_TMP=' + test_tmp],
+    workdir: meson.project_source_root())

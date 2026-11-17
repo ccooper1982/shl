@@ -43,11 +43,10 @@ static VarValue value_from_literal_expr(const Expression& expr)
 }
 
 
-Executor::Executor(const SymbolTable& sym_table, const RuntimeContext& rt_context)
+Executor::Executor(const SymbolTable& sym_table, RuntimeContext& rt_context)
   : m_sym_table(sym_table)
   , m_rt_context(rt_context)
 {
-
 }
 
 
