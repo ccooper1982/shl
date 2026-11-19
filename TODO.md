@@ -12,9 +12,7 @@
 
 ## string
 - `str_empty() -> bool`
-- `str_empty() -> bool`
-- `str_equals() -> bool`
-- `str_equals_icase() -> bool`
+- `str_iequals() -> bool`
 - `str_contains() -> bool`
 
 ## Time
@@ -25,9 +23,24 @@
 
 # Language
 
+## lists
+```
+names := ["bob", "jim", "alf"];
+
+# "bob", "jim", "alf"
+list_append(names, "mary", "john");
+"bob", "jim", "alf", "mary", "john"
+list_rmv(names, 1);
+"bob", "alf", "mary", "john"
+list_rmv(names, "john");
+# "bob", "alf", "mary",
+list_rmv(names, ["alf", "mary"]);
+# "bob"
+```
+
 ## for each
 ```
-for (<variable_decl_assign_expr> in <variable:array>)
+for ([variable_decl_assign_expr] in [variable:list])
 {
   <NodeBlock>
 }
@@ -55,8 +68,6 @@ list_ok.append("jkl");
 
 ## Associative
 Map:
-- All keys must the same type
-- All values must be the same type
 - Implemented with `std::map`
 - Denoted with `{` and `}`
 
@@ -71,28 +82,11 @@ contacts := {
 contacts := {
   "john" : {"dob":"10-10-1990", "post_code":"abc def", "city":"London"}
 };
-```
 
-`variable_decl_assign_expr`:
-- similar to `VariableDecl` and `VariableAssign` because it is declaring a variable and assigning in one expression
-- type is inferred from `<variable_ref>` (the element type of the `list`/`map`)
-
-
-list:
-```
-my_files = file_list("some/dir");
-for (file in my_files) {
-
-}
-```
-
-map:
-```
-contacts := {
-  "john" : {"dob":"10-10-1990", "post_code":"abc def", "city":"London"}
-};
-
-for (name, details in contacts) {
+for (name, details in contacts)
+{
+  for (key, value in details) {
   
+  }
 }
 ```

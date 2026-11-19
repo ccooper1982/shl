@@ -7,7 +7,6 @@
 #include <shl/functional.hpp>
 
 
-
 namespace proc {
 
   struct Pipe

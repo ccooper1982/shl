@@ -4,7 +4,7 @@
 Use a shl script to test shl, marking its own homework.
 #/
 
-path := home()+"/projects/shl/tests/scripts";
+scripts_path := home()+"/projects/shl/tests/scripts";
 shl := home()+"/projects/shl/build/shl";
 tests_wd := home()+"/projects/shl/build/tmp";
 
@@ -23,6 +23,8 @@ environment();
 filesystem_create();
 filesystem_rmv();
 filesystem_type();
+format();
+
 
 # tidy up
 exec(proc("rm", "-rf", tests_wd));
@@ -30,7 +32,7 @@ exec(proc("rm", "-rf", tests_wd));
 # tests
 fn sequence ()
 {
-    script := path + "/sequence.shl";
+    script := scripts_path + "/sequence.shl";
 
     pipeline := proc(shl, script);
     result := to_int(exec_stdout(exec(pipeline)));
@@ -40,9 +42,9 @@ fn sequence ()
 
 fn environment ()
 {
-    script := path + "/env.shl";
+    script := scripts_path + "/env.shl";
     pipeline := proc(shl, script);
-    result := exec_stdout(exec(pipeline));
+    result := exec_stdout_trim(exec(pipeline));
 
     check_str("hello world", result);
 }
@@ -108,6 +110,14 @@ fn filesystem_type ()
     check_bool(true, path_is_file(wd+"/file1.txt"));
 }
 
+fn format()
+{
+    script := scripts_path + "/fmt.shl";
+    pipeline := proc(shl, script);
+    result := exec_stdout_trim(exec(pipeline));
+
+    check_str("1+2=3 true 3.14", result);
+}
 
 # utils
 fn rmv_wd(wd: str, create: bool) -> bool

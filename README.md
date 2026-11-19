@@ -1,3 +1,4 @@
+# shl
 SHell Language, an alternative for shell scripting.
 
 ```
@@ -12,10 +13,10 @@ print(result);
 
 # Aim
 - A programmer friendly scripting language
-- No config files or virtual environment required
+- No config files or virtual environment
 - Integrated knowledge of pipes and processes
 - No memory management
-- Type checks
+- Type safety
 
 
 # Build
@@ -36,21 +37,3 @@ meson setup build --native-file meson/clang.ini -Dbuildtype=release
 ```
 meson test -C build
 ```
-
----
-
-# TODO
-
-## Files
-- exists
-- size
-- permissions
-- create
-- delete
-- copy
-- move
-
-## Environment Vars
-- Get
-- Set
-- Exists
