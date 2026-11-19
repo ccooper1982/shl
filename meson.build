@@ -14,6 +14,7 @@ add_project_arguments(
 )
 
 tree_sitter = dependency('tree-sitter')
+fmt = dependency('fmt')
 gtest = dependency('gtest')
 gtest_main = dependency('gtest_main')
 
@@ -33,7 +34,7 @@ include_dirs = include_directories('grammar/src','include')
 
 shl_exec = executable('shl', shl_sources,
   include_directories: include_dirs,
-  dependencies: [tree_sitter],
+  dependencies: [tree_sitter, fmt],
   install: false
 )
 
@@ -55,7 +56,7 @@ shl_tests = executable(
         'grammar/src/parser.c'
   ),
   include_directories: include_dirs,
-  dependencies: [tree_sitter, gtest, gtest_main],
+  dependencies: [tree_sitter, fmt, gtest, gtest_main],
   cpp_args: ['-DCPY_UNIT_TESTS'],
 )
 

@@ -10,6 +10,8 @@ namespace core
   VarValue print(RuntimeContext&, const std::span<const VarValue> args);
   VarValue println(RuntimeContext& ctx, const std::span<const VarValue> args);
 
+  VarValue fmt (RuntimeContext&, const std::span<const VarValue> args);
+
   VarValue exit(RuntimeContext&, const std::span<const VarValue> args);
 
   // errors
@@ -39,8 +41,10 @@ namespace core
 
 inline const std::map<std::string_view, NativeFunctionDef> NativeCoreFunctions
 {
-  create_function<core::print>("print", NativeType::Void, ParamMode::VariadicAny),
+  create_function<core::print>("print", NativeType::Void, ParamMode::VariadicAny, 1),
   create_function<core::println>("println", NativeType::Void, ParamMode::VariadicAny),
+
+  create_function<core::fmt>("fmt", NativeType::String, ParamMode::VariadicAny, 1),
 
   create_function<core::exit>("exit", {{"status", NativeType::Int}}, NativeType::Void),
 

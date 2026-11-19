@@ -1,11 +1,15 @@
-#include "shl/functional.hpp"
-#include <shl/exec/core.hpp>
 
 #include <shl/common.hpp>
 #include <shl/exceptions.hpp>
+#include <shl/exec/core.hpp>
+#include <shl/functional.hpp>
+
+#include <fmt/format.h>
+#include <fmt/args.h>
 
 #include <cstdlib>
 #include <cstring>
+#include <format>
 #include <print>
 #include <pwd.h>
 #include <string>
@@ -63,6 +67,7 @@ VarValue error_message(RuntimeContext& rc, const std::span<const VarValue>)
   return rc.err_code.message();
 }
 
+/// To exit from any point in the script, a dedicated exception is thrown.
 VarValue exit(RuntimeContext&, const std::span<const VarValue> args)
 {
   const int status = args.empty() ? 0 : static_cast<int>(std::get<ShlInt>(args[0]));
@@ -73,26 +78,46 @@ VarValue exit(RuntimeContext&, const std::span<const VarValue> args)
   throw ScriptExit {status};
 }
 
-VarValue home(RuntimeContext&, const std::span<const VarValue>)
+fmt::dynamic_format_arg_store<fmt::format_context> make_fmt_store (const std::span<const VarValue> args)
 {
-  if (const char* home = std::getenv("HOME"); home && *home) {
-    return std::string{home};
-  }
-  else
+  fmt::dynamic_format_arg_store<fmt::format_context> store;
+
+  // args[0] is the format string
+  for (std::size_t i = 1; i < args.size(); ++i)
   {
-    passwd pwd;
-    passwd * result{};
+    std::visit([&](const auto& value)
+    {
+      using T = std::decay_t<decltype(value)>;
 
-    std::string buffer;
-    buffer.resize(sysconf(_SC_GETPW_R_SIZE_MAX));
+      if constexpr (IsShlString<T>) {
+        store.push_back(value);
+      }
+      else if constexpr (IsShlArithmetic<T> || IsShlBoolean<T>) {
+        store.push_back(value);
+      }
+      else {
+        throw RuntimeError{"Unsupported type in fmt()"};
+      }
+    }, args[i]);
+  }
 
-    if (const int error = getpwuid_r(getuid(), &pwd, buffer.data(), buffer.size(), &result); error != 0) {
-      throw RuntimeError{std::format("getpwuid_r() failed: {}", std::strerror(error))};
-    }
+  return store;
+}
 
-    return ShlString{result->pw_dir};
+VarValue fmt (RuntimeContext&, const std::span<const VarValue> args)
+{
+  auto format_string = std::get<ShlString>(args[0]);
+
+  try
+  {
+    return fmt::vformat(format_string, make_fmt_store(args));
+  }
+  catch (const fmt::format_error& fe)
+  {
+    throw RuntimeError{std::format("Format string is invalid: {}", format_string)};
   }
 }
+
 
 // env //
 VarValue env(RuntimeContext&, const std::span<const VarValue> args)
@@ -113,6 +138,28 @@ VarValue env_set(RuntimeContext&, const std::span<const VarValue> args)
 VarValue env_exists(RuntimeContext&, const std::span<const VarValue> args)
 {
   return std::getenv(std::get<ShlString>(args[0]).data()) != nullptr;
+}
+
+
+VarValue home(RuntimeContext&, const std::span<const VarValue>)
+{
+  if (const char* home = std::getenv("HOME"); home && *home) {
+    return std::string{home};
+  }
+  else
+  {
+    passwd pwd;
+    passwd * result{};
+
+    std::string buffer;
+    buffer.resize(sysconf(_SC_GETPW_R_SIZE_MAX));
+
+    if (const int error = getpwuid_r(getuid(), &pwd, buffer.data(), buffer.size(), &result); error != 0) {
+      throw RuntimeError{std::format("getpwuid_r() failed: {}", std::strerror(error))};
+    }
+
+    return ShlString{result->pw_dir};
+  }
 }
 
 // conversion //
