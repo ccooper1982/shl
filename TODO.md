@@ -1,5 +1,7 @@
 # TODO
 
+- Add optional `max_args` to variadic functions, i.e. for conversion functions (`to_int()`, etc)
+ 
 # Library
 
 ## filesystem
@@ -23,7 +25,12 @@
 
 # Language
 
-## lists
+## Arrays
+
+- All elements must have the same type
+- Variable size (implemented with an `std::list` or `std::vector`)
+- Denoted with `[` and `]`
+- 
 ```
 names := ["bob", "jim", "alf"];
 
@@ -52,18 +59,6 @@ for ([init_expr] ; <condition_expr:bool> ; [iteration_expr])
 {
   <NodeBlock>
 }
-```
-
-## Sequence
-
-List:
-- All elements must have the same type
-- Variable size (implemented with an `std::list` or `std::vector`)
-- Denoted with `[` and `]`
-
-```
-list_ok := ["abc", "def", "ghi"];
-list_ok.append("jkl");
 ```
 
 ## Associative

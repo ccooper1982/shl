@@ -37,6 +37,8 @@ enum class ErrorCode
   BinaryOperandsVoid,
   UnaryOperandInvalid,
   UnaryOperandVoid,
+  ArrayItemTypeMismatch,
+  ArrayIndexNotInt,
   ExprDivideByZero,
   ConditionNotBool,
   ReturnFromRoot,
@@ -300,5 +302,20 @@ namespace issue
   inline void expr_divide_by_zero (Issues& issues, const AstNode& node)
   {
     issues.add_error("Divide by 0", node.source, ErrorCode::ExprDivideByZero);
+  }
+
+  inline void array_item_mismatch (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array items are not the same type", node.source, ErrorCode::ArrayItemTypeMismatch);
+  }
+
+  inline void array_items_empty (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array cannot be initialised empty. Cannot infer item type", node.source, ErrorCode::ArrayItemTypeMismatch);
+  }
+
+  inline void array_index_type (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array index must be an int", node.source, ErrorCode::ArrayIndexNotInt);
   }
 }

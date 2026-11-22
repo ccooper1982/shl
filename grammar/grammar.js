@@ -1,3 +1,7 @@
+function commaSep1(rule) {
+  return seq(rule, repeat(seq(",", rule)));
+}
+
 export default grammar({
   name: "shl",
 
@@ -40,15 +44,34 @@ export default grammar({
         optional(field("ref", $.ref_modifier)),
         field("type", $.type_name),
       ),
-
+    type_name: ($) =>
+      seq(
+        $.identifier,
+        optional(seq("[", "]")),
+      ),
     ref_modifier: ($) => "ref",
     return_type: ($) => seq("->", field("type_name", $.type_name)),
-    type_name: ($) => $.identifier,
     identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_]*/,
     integer: ($) => /[0-9]+/,
     decimal: ($) => /[0-9]+\.[0-9]+/,
     boolean: ($) => choice("true","false",),
     string: ($) => /"([^"\\]|\\.)*"/,
+    array_literal: ($) =>
+      seq(
+        "[",
+        optional(seq(
+          commaSep1($.expression),
+          optional(","),
+        )),
+        "]",
+      ),
+    index_expression: ($) =>
+      seq(
+        field("array", $.identifier),
+        "[",
+        field("index", $.expression),
+        "]",
+      ),
 
     block: ($) => seq(
       "{",
@@ -164,7 +187,9 @@ export default grammar({
       $.integer,
       $.string,
       $.boolean,
+      $.array_literal,
       $.function_call,
+      $.index_expression,
       $.identifier,
       $.unary_expression,
       $.binary_expression,

@@ -1,8 +1,10 @@
+#include "shl/exceptions.hpp"
 #include "shl/functional.hpp"
 #include <algorithm>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include <shl/ast/ast.hpp>
@@ -211,6 +213,42 @@ ExecutionResult Executor::execute (const NodeBlock& block, const Expression& exp
     const auto& ref = static_cast<const VariableUse&>(expr);
     const auto& variable = get_variable(ref.name);
     result = variable.value();
+  }
+  else if (expr.is_expr_type(ExpressionType::Array))
+  {
+    const auto& array = static_cast<const ArrayLiteral&>(expr);
+
+    auto shl_array = std::make_shared<ShlArray>();
+    shl_array->items.reserve(array.items.size());
+
+    for (const auto& item : array.items) {
+      shl_array->items.emplace_back(execute(block, *item).value);
+    }
+
+    result.value = shl_array;
+  }
+  else if (expr.is_expr_type(ExpressionType::IndexVariable))
+  {
+    const auto& index_var = static_cast<const IndexedVariable&>(expr);
+    const auto& variable = get_variable(index_var.name);
+
+    const auto index_result = execute(block, *index_var.index_expr);
+    const auto index = std::get<ShlInt>(index_result.value);
+
+    if (!std::holds_alternative<std::shared_ptr<ShlArray>>(variable.value())) {
+      throw RuntimeError{std::format("Variable {} expected to be a ShlArray", index_var.name)};
+    }
+
+    const auto& array = std::get<std::shared_ptr<ShlArray>>(variable.value());
+    const auto array_size = std::ssize(array->items);
+
+    if (index < -array_size || index >= array_size) {
+      throw RuntimeError{std::format("Array access out of range: {} index {} size {}", index_var.name, index, array->items.size())};
+    }
+
+    const auto actual_index = static_cast<std::size_t>(index < 0 ? array_size + index : index);
+
+    result.value = array->items[actual_index];
   }
 
   return result;

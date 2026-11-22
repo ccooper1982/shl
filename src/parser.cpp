@@ -163,6 +163,37 @@ NodePtr<Expression> Parser::parse_expression(const TSNode& expr_node)
   else if (expr_type == "identifier") {
     expr = make_node<VariableUse>(from_source(expr_node));
   }
+  else if (expr_type == "array_literal")
+  {
+    TSNode array_node = ts_node_named_child(expr_node, 0);
+    const uint32_t item_count = ts_node_named_child_count(array_node);
+
+    std::vector<NodePtr<Expression>> items;
+    items.reserve(item_count);
+
+    for (uint32_t i = 0 ; i < item_count ; ++i)
+    {
+      TSNode item = ts_node_named_child(array_node, i);
+      items.emplace_back(parse_expression(item));
+    }
+
+    // we don't set the ArrayLiteral::item_type here because we can't do it reliably
+    // without parsing the expressions, which is a job for semantics
+    expr = make_node<ArrayLiteral>(std::move(items));
+  }
+  else if (expr_type == "index_expression")
+  {
+    auto indexed_ast = make_node<IndexedVariable>();
+
+    const TSNode indexed_var_node = ts_node_named_child(expr_node, 0);
+    const auto var_node = child_by_field_name(indexed_var_node, "array");
+    const auto index_expr_node = child_by_field_name(indexed_var_node, "index");
+
+    indexed_ast->name = from_source(var_node);
+    indexed_ast->index_expr = parse_expression(index_expr_node);
+
+    expr = std::move(indexed_ast);
+  }
 
   if (expr) {
     set_source_region(expr_node, *expr);

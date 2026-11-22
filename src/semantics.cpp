@@ -347,6 +347,24 @@ bool Semantics::process_function_call_argument(Context& ctx, const AstNode& pare
       return false;
     }
   }
+  else if (arg_expr.is_expr_type(ExpressionType::IndexVariable))
+  {
+    const auto& var = static_cast<const IndexedVariable&>(arg_expr);
+
+    const auto array_type = process_expression(ctx, parent, block, var);
+    if (!is_variadic && array_type != *arg_type)
+    {
+      issue::func_arg(ctx.issues, call, param_name);
+      return false;
+    }
+
+    const auto index_type = handle_expression(ctx, parent, block, *var.index_expr);
+    if (index_type != NativeType::Int)
+    {
+      issue::array_index_type(ctx.issues, var);
+      return false;
+    }
+  }
   else if (!is_variadic && !arg_expr.is_convertible_to(*arg_type))
   {
     issue::func_arg(ctx.issues, call, param_name);
@@ -428,6 +446,46 @@ VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const
   }
 
   return ret_type;
+}
+
+
+VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const ArrayLiteral& expr)
+{
+  if (expr.items.empty())
+  {
+    issue::array_items_empty(ctx.issues, expr);
+    return unresolved_type;
+  }
+  else
+  {
+    const std::span<const NodePtr<Expression>> items {expr.items} ;
+
+    // the type of each element must be equal, so get the first and check remaining are equal
+    const auto element_type = handle_expression(ctx, parent, block, *items.front());
+
+    for (const auto& item : items.subspan(1))
+    {
+      if (element_type != handle_expression(ctx, parent, block, *item))
+      {
+        issue::array_item_mismatch(ctx.issues, expr);
+        return unresolved_type;
+      }
+    }
+
+    return element_type;
+  }
+}
+
+
+VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const IndexedVariable& expr)
+{
+  if (!m_symbol_table.has_visible_variable(expr.name, block, expr.source.start))
+  {
+    issue::var_unknown(ctx.issues, parent, expr.name);
+    return unresolved_type;
+  }
+
+  return m_symbol_table.get_variable(expr.name, block).type;
 }
 
 

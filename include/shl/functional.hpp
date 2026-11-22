@@ -34,14 +34,24 @@ struct ExecResult
   bool operator==(const ExecResult&) const = default;
 };
 
+
+struct ShlArray; // forward decl
+
 using ShlInt = int64_t;
 using ShlDec = double;
 using ShlBool = bool;
 using ShlString = std::string;
 
 using VarName = std::string_view;
-using VarValue = std::variant<std::monostate, ShlString, ShlInt, ShlDec, ShlBool, Process, Pipeline, ExecResult>;
+using VarValue = std::variant<std::monostate,
+                              ShlString, ShlInt, ShlDec, ShlBool,
+                              Process, Pipeline, ExecResult,
+                              std::shared_ptr<ShlArray>>;
 
+struct ShlArray
+{
+  std::vector<VarValue> items;
+};
 
 template<typename T1, typename T2, typename ShlType>
 concept AreSame = std::is_same_v<T1, ShlType> && std::is_same_v<T2, ShlType> ;
@@ -62,10 +72,13 @@ template<typename T>
 concept IsShlString = std::is_same_v<T, ShlString>;
 
 template<typename T>
+concept IsShlArray = std::is_same_v<T, std::shared_ptr<ShlArray>>;
+
+template<typename T>
 concept IsShlSimpleType = std::disjunction_v<std::is_same<T, ShlString>, std::is_same<T, ShlInt>, std::is_same<T, ShlDec>, std::is_same<T, ShlBool>>;
 
 template<typename T>
-concept IsShlType = IsShlSimpleType<T> || std::disjunction_v<std::is_same<T, Process>, std::is_same<T, Pipeline>, std::is_same<T, ExecResult>>;
+concept IsShlType = IsShlSimpleType<T> || IsShlArray<T> || std::disjunction_v<std::is_same<T, Process>, std::is_same<T, Pipeline>, std::is_same<T, ExecResult>>;
 
 template<typename T1, typename T2>
 concept AreShlInteger = AreSame<T1, T2, ShlInt>;
@@ -79,6 +92,8 @@ concept AreShlString = AreSame<T1, T2, ShlString>;
 template<typename T1, typename T2>
 concept AreShlArithmetic = IsShlArithmetic<T1> && IsShlArithmetic<T2> ;
 
+template<typename Op>
+concept IsStringOperation = std::disjunction_v<std::is_same<Op, std::plus<>>, std::is_same<Op, std::equal_to<>>, std::is_same<Op, std::not_equal_to<>>>;
 
 
 enum class NativeType

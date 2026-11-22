@@ -1,0 +1,21 @@
+#! /home/callum/projects/shl/build/shl
+
+fn get_value() -> str
+{
+    return "world";
+}
+
+fn get_index() -> int
+{
+    return 1;
+}
+
+if (arg_count() != 2)  {
+    exit(1);
+}
+
+data := ["hello", get_value()];
+print(data[0], " ", data[get_index()]);
+
+from_argv := [arg_str(0), arg_str(1)];
+print(from_argv);
