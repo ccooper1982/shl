@@ -227,7 +227,7 @@ ExecutionResult Executor::execute (const NodeBlock& block, const Expression& exp
 
     result.value = shl_array;
   }
-  else if (expr.is_expr_type(ExpressionType::IndexVariable))
+  else if (expr.is_expr_type(ExpressionType::IndexedVariable))
   {
     const auto& index_var = static_cast<const IndexedVariable&>(expr);
     const auto& variable = get_variable(index_var.name);

@@ -8,6 +8,7 @@
 #include <type_traits>
 
 #include <shl/common.hpp>
+#include <shl/exceptions.hpp>
 
 struct FunctionDef; // forward decl
 
@@ -318,4 +319,33 @@ auto create_function(std::string_view name, NativeType return_type, ParamMode pa
 
   ResolvedFunction func {.params = {}, .return_type = return_type, .param_mode = param_mode};
   return FunctionEntry {name, {std::move(func), F, min_args}};
+}
+
+
+inline ShlString unescape_string(const std::string_view input)
+{
+  ShlString result;
+  result.reserve(input.size());
+
+  for (std::size_t i = 0; i < input.size(); ++i)
+  {
+    if (input[i] != '\\' || i + 1 == input.size())
+    {
+      result += input[i];
+      continue;
+    }
+
+    switch (input[++i])
+    {
+      case 'n':  result += '\n'; break;
+      case 't':  result += '\t'; break;
+      case 'r':  result += '\r'; break;
+      case '\\': result += '\\'; break;
+      case '"':  result += '"';  break;
+      default:
+        throw RuntimeError{"Unknown string escape sequence"};
+    }
+  }
+
+  return result;
 }

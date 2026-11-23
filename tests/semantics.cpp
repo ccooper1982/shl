@@ -809,3 +809,15 @@ TEST(Semantics, LogicalOperators)
     ASSERT_EQ(script.issues->get_count(ErrorCode::BinaryOperandsInvalid), 2);
   }
 }
+
+
+TEST(Semantics, StringLiteral_Escapes)
+{
+  ASSERT_TRUE(valid_string_escapes(R"(hello\nworld)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\tworld)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\\world)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\"world)"));
+
+  ASSERT_FALSE(valid_string_escapes(R"(hello\qworld)"));
+  ASSERT_FALSE(valid_string_escapes("hello\\"));
+}

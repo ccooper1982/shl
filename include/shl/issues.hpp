@@ -10,6 +10,7 @@
 
 #include <shl/ast/ast_node.hpp>
 
+#include "shl/ast/expressions.hpp"
 #include "tree_sitter/api.h"
 
 enum class ErrorCode
@@ -41,6 +42,7 @@ enum class ErrorCode
   ArrayIndexNotInt,
   ExprDivideByZero,
   ConditionNotBool,
+  StringLiteralEscapes,
   ReturnFromRoot,
   Unsupported,
   SyntaxError,
@@ -318,4 +320,10 @@ namespace issue
   {
     issues.add_error("Array index must be an int", node.source, ErrorCode::ArrayIndexNotInt);
   }
+
+  inline void str_literal_escapes (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("String literal has invalid escape character(s)", node.source, ErrorCode::StringLiteralEscapes);
+  }
+
 }

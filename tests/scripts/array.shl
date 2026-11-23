@@ -15,7 +15,7 @@ if (arg_count() != 2)  {
 }
 
 data := ["hello", get_value()];
-print(data[0], " ", data[get_index()]);
+println(data[0], " ", data[get_index()]);
 
 from_argv := [arg_str(0), arg_str(1)];
-print(from_argv);
+println(from_argv);

@@ -125,7 +125,7 @@ fn arrays()
     pipeline := proc(shl, script, "one", "two");
     result := exec_stdout_trim(exec(pipeline));
 
-    check_str("hello world[one, two]", result);
+    check_str("hello world\n[one, two]", result);
 }
 
 

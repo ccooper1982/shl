@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shl/functional.hpp"
 #include <shl/ast/ast_node.hpp>
 #include <shl/ast/expressions.hpp>
 #include <concepts>
@@ -10,6 +11,10 @@
 #include <shl/common.hpp>
 #include <shl/issues.hpp>
 #include <shl/symbol_table.hpp>
+
+
+
+bool valid_string_escapes(const std::string_view str);
 
 
 ///
@@ -117,8 +122,9 @@ private:
     // TODO walk_nodes() cannot accept multiple node types
     for (const auto& node : block.nodes())
     {
-      if (node->is_node_type(NodeType::NodeBlock))
+      if (node->is_node_type(NodeType::NodeBlock)){
         count += expression_count<ExprT>(static_cast<const NodeBlock&> (*node));
+      }
       else if (node->is_node_type(NodeType::ConditionIf))
       {
         const auto& cond = static_cast<const ConditionIf&> (*node);
@@ -133,12 +139,17 @@ private:
           count += expression_count<ExprT>(*cond.else_body);
         }
       }
+      else if (node->is_node_type(NodeType::LoopWhile))
+      {
+        const auto& loop = static_cast<const LoopWhile&> (*node);
+        count += expression_count<ExprT>(loop.body);
+      }
     }
 
     return count;
   }
 
-  VarType handle_expression (Context& ctx, const AstNode& parent, const NodeBlock& block, const Expression& expr)
+  inline VarType handle_expression (Context& ctx, const AstNode& parent, const NodeBlock& block, const Expression& expr)
   {
     switch (expr.expr_type())
     {
@@ -154,13 +165,54 @@ private:
         return process_expression(ctx, parent, block, static_cast<const BinaryExpression&>(expr));
       case ExpressionType::Array:
         return process_expression(ctx, parent, block, static_cast<const ArrayLiteral&>(expr));
-      case ExpressionType::IndexVariable:
+      case ExpressionType::IndexedVariable:
         return process_expression(ctx, parent, block, static_cast<const IndexedVariable&>(expr));
       default:
-        return expr.get_var_type(); // literal
+      {
+        // literal expression. Validate escape sequences in strings
+        if (expr.is_expr_type(ExpressionType::String))
+        {
+          const auto str = static_cast<const StringLiteral&>(expr);
+          if (!valid_string_escapes(str.v))
+          {
+            issue::str_literal_escapes(ctx.issues, expr);
+            return unresolved_type;
+          }
+        }
+        return expr.get_var_type();
+      }
     }
   }
 
 private:
   SymbolTable m_symbol_table;
 };
+
+
+inline bool valid_string_escapes(const std::string_view str)
+{
+  for (std::size_t i = 0; i < str.size(); ++i)
+  {
+    if (str[i] != '\\') {
+      continue;
+    }
+    // trailing backslash
+    if (++i == str.size()) {
+      return false;
+    }
+
+    switch (str[i])
+    {
+      case 'n':
+      case 't':
+      case 'r':
+      case '\\':
+      case '"':
+        break;
+      default:
+        return false;
+    }
+  }
+
+  return true;
+}

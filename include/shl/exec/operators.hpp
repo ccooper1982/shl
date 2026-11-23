@@ -191,9 +191,9 @@ inline VarValue operator|(const VarValue& lhs, const VarValue& rhs)
     },
     [&](const Pipeline& left, const Pipeline& right) -> VarValue
     {
-        Pipeline result {left};
-        result.processes.insert_range(result.processes.end(), right.processes);
-        return result;
+      Pipeline result {left};
+      result.processes.insert_range(result.processes.end(), right.processes);
+      return result;
     },
     [&](const auto&, const auto&) -> VarValue
     {

@@ -45,7 +45,7 @@ enum class ExpressionType
   VariableUse,
   Return,
   Array,
-  IndexVariable
+  IndexedVariable
 };
 
 
@@ -167,9 +167,11 @@ struct StringLiteral : public Expression
     os << "str = \"" << v << '\"';
   }
 
-  ShlString value() const
+  ShlString value(const bool unescape = true) const
   {
-    return ShlString{v};
+    if (!unescape)
+      return ShlString{v};
+    return unescape_string(v);
   }
 
   std::string_view v;
@@ -442,7 +444,7 @@ struct VariableUse : public Expression
 
 struct IndexedVariable : public Expression
 {
-  static constexpr ExpressionType ExprType = ExpressionType::IndexVariable;
+  static constexpr ExpressionType ExprType = ExpressionType::IndexedVariable;
 
   IndexedVariable() : Expression(ExprType, false)
   {}
@@ -544,7 +546,7 @@ inline std::string_view to_string(const Expression& expr)
       return "Return";
     case Array:
       return "Array";
-    case IndexVariable:
+    case IndexedVariable:
       return "IndexedVariable";
   }
 }

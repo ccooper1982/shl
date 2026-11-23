@@ -347,7 +347,7 @@ bool Semantics::process_function_call_argument(Context& ctx, const AstNode& pare
       return false;
     }
   }
-  else if (arg_expr.is_expr_type(ExpressionType::IndexVariable))
+  else if (arg_expr.is_expr_type(ExpressionType::IndexedVariable))
   {
     const auto& var = static_cast<const IndexedVariable&>(arg_expr);
 
