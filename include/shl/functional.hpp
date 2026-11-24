@@ -118,23 +118,31 @@ struct UserType
   std::string_view name;
 };
 
+// TODO decide if shl supports user types. If not, rip out
 struct VarType
 {
-  VarType() : type (NativeType::Unset)
+  VarType() : m_type (NativeType::Unset)
   {}
 
-  VarType(const NativeType t) : type (t)
+  VarType(const NativeType t) : m_type (t)
   {}
 
-  const auto& value() const
+  const auto& value() const { return m_type; }
+
+  bool is_array() const
   {
-    return type;
+    return m_is_array;
+  }
+
+  void is_array(const bool array)
+  {
+    m_is_array = array;
   }
 
   template<typename T>
   const std::optional<T> value_as() const
   {
-    if (const auto param_type = std::get_if<T>(&type); param_type)
+    if (const auto param_type = std::get_if<T>(&m_type); param_type)
       return *param_type;
     return std::nullopt;
   }
@@ -142,7 +150,7 @@ struct VarType
   template<typename T>
   bool is_type() const requires(std::is_same_v<T, NativeType>)
   {
-    return std::holds_alternative<T>(type);
+    return std::holds_alternative<T>(m_type);
   }
 
   bool is_type(const NativeType t) const
@@ -156,7 +164,8 @@ struct VarType
   }
 
 private:
-  std::variant<NativeType, UserType> type;
+  std::variant<NativeType, UserType> m_type;
+  bool m_is_array{};
 };
 
 
@@ -262,7 +271,7 @@ struct ResolvedSymbol
   std::string_view name;
   VarType type;
   bool is_ref{};
-  bool is_array{};
+  // bool is_array{};
   uint32_t position{};
 };
 

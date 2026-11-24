@@ -81,7 +81,7 @@ public:
     return NativeCoreFunctions.contains(name) || NativeProcFunctions.contains(name) || NativeFileFunctions.contains(name);
   }
 
-  void add_variable(const std::string_view name, const VarType type, const uint32_t position, const bool is_array = false);
+  void add_variable(const std::string_view name, const VarType type, const uint32_t position);
 
   void add_variable(const FunctionParam& param, const uint32_t position)
   {

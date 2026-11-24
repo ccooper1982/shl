@@ -152,6 +152,7 @@ void Semantics::process_function_signatures(Context& ctx)
       return;
     }
 
+    // user defined function with same name as a native function
     if (m_symbol_table.has_native_function(def.name))
     {
       issue::func_core_exists(ctx.issues, def, def.name);
@@ -167,7 +168,7 @@ void Semantics::process_function_signatures(Context& ctx)
       else
       {
         issue::unknown_param_type(ctx.issues, param);
-        return ;
+        return;
       }
     }
 
@@ -199,6 +200,8 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
 
   VarType var_type, init_type;
 
+  var_type.is_array(decl.is_array);
+
   if (decl.has_explicit_type())
   {
     if (const auto type = m_symbol_table.get_type(decl.var_type); !type)
@@ -217,6 +220,7 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
   if (decl.has_initialiser())
   {
     init_type = handle_expression(ctx, decl, block, *decl.initialiser);
+    init_type.is_array(decl.is_array);
 
     if (init_type == NativeType::Void)
     {
@@ -232,7 +236,7 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
     issue::var_init_type_differ(ctx.issues, decl);
   }
   else {
-    m_symbol_table.add_variable(decl.var_name, decl.has_initialiser() ? init_type : var_type, decl.source.start, decl.is_array);
+    m_symbol_table.add_variable(decl.var_name, decl.has_initialiser() ? init_type : var_type, decl.source.start);
   }
 }
 
@@ -454,11 +458,15 @@ VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const
     return unresolved_type;
   }
 
-  VarType ret_type {NativeType::Void};
-
   const auto& func_def = static_cast<const FunctionDef&>(parent);
+
+  if (!m_symbol_table.has_function(func_def.name)) {
+    return unresolved_type;
+  }
+
   const auto& resolved_func = m_symbol_table.get_function(func_def.name);
 
+  VarType ret_type {NativeType::Void};
   if (ret_expr.has_expression())
   {
     const auto expr_ret_type = handle_expression(ctx, parent, block, *ret_expr.return_expr);
@@ -717,23 +725,43 @@ void Semantics::process_while(Context& ctx, const AstNode& parent, const NodeBlo
 
 void Semantics::process_for_each(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopForEach& loop)
 {
-  if (!m_symbol_table.has_visible_variable(loop.iterable_name, block, loop.iterable->source.start)) {
-    issue::var_unknown(ctx.issues, parent, loop.iterable_name);
+  // if the iterable is a function call, handle_expression() returns the element type, not an array
+  const auto element_type = handle_expression(ctx, parent, block, *loop.iterable);
+
+  if (!element_type) {
+    return;
   }
-  else
+
+  if (loop.iterable->is_expr_type(ExpressionType::VariableUse))
   {
-    const auto iterable_type = m_symbol_table.get_variable(loop.iterable_name, block);
-
-    if (!iterable_type.is_array) {
-      issue::foreach_iterable_type(ctx.issues, *loop.iterable);
-    }
-    else
+    if (!m_symbol_table.has_visible_variable(loop.iterable_name, block, loop.iterable->source.start))
     {
-      const auto element_type = handle_expression(ctx, parent, block, static_cast<const ArrayLiteral&>(*loop.iterable));
+      issue::var_unknown(ctx.issues, parent, loop.iterable_name);
+      return;
+    }
 
-      if (element_type) {
-        process_loop_block(ctx, parent, loop, element_type);
-      }
+    const auto iterable_type = m_symbol_table.get_variable(loop.iterable_name, block);
+    if (!iterable_type.type.is_array())
+    {
+      issue::foreach_iterable_type(ctx.issues, *loop.iterable);
+      return;
     }
   }
+  else if (loop.iterable->is_expr_type(ExpressionType::FuncCall))
+  {
+    // TODO after doing, I realised functions cannot return an array.
+    const auto& func_name = static_cast<const FunctionCall&>(*loop.iterable).name;
+    if (m_symbol_table.has_function(func_name) && !m_symbol_table.get_function(func_name).return_type.is_array())
+    {
+      issue::foreach_iterable_type(ctx.issues, *loop.iterable);
+      return;
+    }
+  }
+  else if (!loop.iterable->is_expr_type(ExpressionType::Array))
+  {
+    issue::foreach_iterable_type(ctx.issues, *loop.iterable);
+    return;
+  }
+
+  process_loop_block(ctx, parent, loop, element_type);
 }

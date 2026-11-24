@@ -50,7 +50,11 @@ export default grammar({
         optional(seq("[", "]")),
       ),
     ref_modifier: ($) => "ref",
-    return_type: ($) => seq("->", field("type_name", $.type_name)),
+    return_type: ($) =>
+      seq(
+        "->",
+        field("type_name", $.type_name)
+      ),
     identifier: ($) => /[a-zA-Z_][a-zA-Z0-9_]*/,
     integer: ($) => /[0-9]+/,
     decimal: ($) => /[0-9]+\.[0-9]+/,

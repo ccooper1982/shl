@@ -1,13 +1,14 @@
 strs := ["a", "b", "c"];
-ints := [1];
-
-println(strs);
-println(ints);
 
 for (str in strs) {
-    println(str);
+    print(str);
 }
 
-for (int in ints) {
-    println(int + 4);
-}
+# fn foo() -> str[]
+# {
+#    return ["a", "b"];
+# }
+
+# for (a in foo()) {
+#    println(a);
+#}

@@ -304,19 +304,36 @@ TEST(Semantics, FuncDef_ReturnValid)
 
 TEST(Semantics, FuncDef_ReturnInvalid)
 {
-  const std::string_view src = R"(
-    fn foo1() -> int { return "one"; }
-    fn foo2() { return "one"; }
-  )";
+  {
+    const std::string_view src = R"(
+      fn foo1() -> int { return "one"; }
+      fn foo2() { return "one"; }
+    )";
 
-  Parser parser;
-  auto script = parser.parse(src);
+    Parser parser;
+    auto script = parser.parse(src);
 
-  Semantics sem;
-  sem.process(script);
+    Semantics sem;
+    sem.process(script);
 
-  ASSERT_TRUE(script.issues->have_errors());
-  ASSERT_EQ(script.issues->get_count(ErrorCode::FunctionReturnExpression), 2);
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::FunctionReturnExpression), 2);
+  }
+
+  {
+    const std::string_view src = R"(
+      fn foo1() -> str[] { return ["a", "b"] ; }
+    )";
+
+    Parser parser;
+    Semantics sem;
+
+    auto script = parser.parse(src);
+    sem.process(script);
+
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::UnknownReturnType), 1);
+  }
 }
 
 

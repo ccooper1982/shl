@@ -302,7 +302,7 @@ namespace issue
 
   inline void return_from_root (Issues& issues, const AstNode& node)
   {
-    issues.add_error("Cannot return from script root", node.source, ErrorCode::ReturnFromRoot);
+    issues.add_error("Cannot return from script root. Use exit().", node.source, ErrorCode::ReturnFromRoot);
   }
 
   inline void expr_divide_by_zero (Issues& issues, const AstNode& node)
