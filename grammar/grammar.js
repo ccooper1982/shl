@@ -93,6 +93,7 @@ export default grammar({
         ),
         field("condition_if", $.condition_if),
         field("loop_while", $.loop_while),
+        field("loop_for_each", $.loop_for_each),
       ),
 
     function_call: ($) => seq(
@@ -147,6 +148,17 @@ export default grammar({
       seq(
         "while", "(",
         field("condition", $.expression),
+        ")",
+        field("body", $.block),
+      ),
+
+    loop_for_each: ($) =>
+      seq(
+        "for",
+        "(",
+        field("variable", $.identifier),
+        "in",
+        field("iterable", $.expression),
         ")",
         field("body", $.block),
       ),

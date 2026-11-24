@@ -178,10 +178,13 @@ public:
 private:
   void execute (const NodeBlock& block, const VariableAssign& assign);
   void execute (const NodeBlock& block, const VariableDecl& decl);
+
   ExecutionResult execute (const NodeBlock& block, const Expression& expr);
   ExecutionResult execute (const NodeBlock& block, const ConditionIf& cond);
-  ExecutionResult execute (const NodeBlock& block, const LoopWhile& loop);
   ExecutionResult execute (const NodeBlock& block, const FunctionCall& call);
+
+  ExecutionResult execute (const NodeBlock& block, const LoopWhile& loop);
+  ExecutionResult execute (const NodeBlock& block, const LoopForEach& loop);
 
   // operators //
   VarValue apply_operator(const NodeBlock& block, const Expression& lhs, const Expression& rhs, const BinaryOperator op);

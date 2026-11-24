@@ -47,19 +47,22 @@ private:
   template<typename NodeT>
   using NodeHandler = std::function<void(const NodeT&)>;
 
-  void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true, const bool add_func_vars = true);
+  // blocks
+  void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true);
+  // void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true, const bool add_func_vars = true);
+  void process_function_block(Context& ctx, const FunctionDef& def);
+  void process_loop_block(Context& ctx, const AstNode& parent, const LoopWhile& loop);
+  void process_loop_block(Context& ctx, const AstNode& parent, const LoopForEach& loop, const VarType element_type);
 
   // functions
   void process_function_signatures(Context& ctx);
   void process_function_bodies(Context& ctx, const NodeBlock& block);
   bool process_function_call_argument(Context& ctx, const AstNode& parent, const NodeBlock& block, const FunctionCall& call, const size_t param_index);
 
-
   // variables
   void process_variable_declaration(Context& ctx, const NodeBlock& block, const VariableDecl& decl);
   void process_variable_assign(Context& ctx, const NodeBlock& block, const VariableAssign& assign);
 
-  // TODO what's the parent param actually used for?
   // expressions
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const FunctionCall& expr);
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const VariableUse& expr);
@@ -78,6 +81,7 @@ private:
 
   // loops
   void process_while(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopWhile& loop);
+  void process_for_each(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopForEach& loop);
 
   // utils
   template<typename NodeT, typename Handler>

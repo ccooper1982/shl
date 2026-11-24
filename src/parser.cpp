@@ -177,8 +177,6 @@ NodePtr<Expression> Parser::parse_expression(const TSNode& expr_node)
       items.emplace_back(parse_expression(item));
     }
 
-    // we don't set the ArrayLiteral::item_type here because we can't do it reliably
-    // without parsing the expressions, which is a job for semantics
     expr = make_node<ArrayLiteral>(std::move(items));
   }
   else if (expr_type == "index_expression")
@@ -230,6 +228,10 @@ NodePtr<VariableDecl> Parser::parse_variable_decl(const TSNode& ts_node)
   }
   else {
     var_decl = make_node<VariableDecl>(VariableDecl::create_inferred(parse_expression(init_node)));
+  }
+
+  if (var_decl->has_initialiser()) {
+    var_decl->is_array = var_decl->initialiser->is_expr_type(ExpressionType::Array);
   }
 
   var_decl->var_name = from_source(name_node);
@@ -303,6 +305,7 @@ NodePtr<AstNode> Parser::parse_statement (const TSNode& ts_statement)
   const auto return_ = child_by_field_name(ts_statement, "return");
   const auto loop_while = child_by_field_name(ts_statement, "loop_while");
   const auto increment = child_by_field_name(ts_statement, "increment");
+  const auto loop_for_each = child_by_field_name(ts_statement, "loop_for_each");
 
   NodePtr<AstNode> node;
 
@@ -326,6 +329,9 @@ NodePtr<AstNode> Parser::parse_statement (const TSNode& ts_statement)
   }
   else if(!ts_node_is_null(loop_while)) {
     node = parse_loop_while(loop_while);
+  }
+  else if (!ts_node_is_null(loop_for_each)) {
+    node = parse_loop_foreach(loop_for_each);
   }
   else if(!ts_node_is_null(increment)) {
     node = parse_expression(increment);
@@ -435,13 +441,11 @@ NodePtr<FunctionDef> Parser::parse_function_def(const TSNode& ts_node)
   }
 
   // body
-  auto body = child_by_field_name(ts_node, "body");
+  const auto body = child_by_field_name(ts_node, "body");
   if (!ts_node_is_null(body))
   {
+    ast_node->body.set_nodes(parse_statements(body));
     set_source_region(body, ast_node->body);
-    if (auto statements = parse_statements(body); !statements.empty()) {
-      ast_node->body.set_nodes(std::move(statements));
-    }
   }
 
   return ast_node;
@@ -508,6 +512,26 @@ NodePtr<LoopWhile> Parser::parse_loop_while(const TSNode& ts_node)
   loop->body.set_nodes(parse_statements(body));
 
   set_source_region(cond, *loop->expr);
+  set_source_region(body, loop->body);
+
+  return loop;
+}
+
+
+NodePtr<LoopForEach> Parser::parse_loop_foreach(const TSNode& ts_node)
+{
+  auto loop = make_node<LoopForEach>();
+
+  const auto var = child_by_field_name(ts_node, "variable");
+  const auto iterable = child_by_field_name(ts_node, "iterable");
+  const auto body = child_by_field_name(ts_node, "body");
+
+  loop->var_name = from_source(var);
+  loop->iterable_name = from_source(iterable);
+  loop->iterable = parse_expression(iterable);
+  loop->body.set_nodes(parse_statements(body));
+
+  set_source_region(iterable, *loop->iterable);
   set_source_region(body, loop->body);
 
   return loop;

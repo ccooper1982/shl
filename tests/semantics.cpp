@@ -419,6 +419,7 @@ TEST(Semantics, VariableDecl_ArrayValid)
   const std::string_view src = R"(
     a := ["a", "b", "c"];
     b := ["hello", get_value()];
+    c := ["hello", a[0]];
 
     println(a[0]);
     println(b[0], b[get_index()]);
@@ -443,6 +444,9 @@ TEST(Semantics, VariableDecl_ArrayInvalid)
       a := ["a", "b", "c"];
       b := ["a", 1];
       c := ["a", true];
+      d := [["a"]];
+      e := ["c", a];
+      f := [a, "c"];
     )";
 
     Parser parser;
@@ -453,6 +457,7 @@ TEST(Semantics, VariableDecl_ArrayInvalid)
 
     ASSERT_TRUE(script.issues->have_errors());
     ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayItemTypeMismatch), 2);
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayItemType), 3);
   }
 
   {
@@ -467,7 +472,7 @@ TEST(Semantics, VariableDecl_ArrayInvalid)
     sem.process(script);
 
     ASSERT_TRUE(script.issues->have_errors());
-    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayItemTypeMismatch), 1);
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayCannotInferType), 1);
   }
 
   {

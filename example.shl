@@ -1,29 +1,13 @@
+strs := ["a", "b", "c"];
+ints := [1];
 
-## TODO
-##  find why using println() in scripts ran from self_test
-##  fail string comparison
+println(strs);
+println(ints);
 
-fn get_value() -> str
-{
-    return "world";
+for (str in strs) {
+    println(str);
 }
 
-fn get_index() -> int
-{
-    return 1;
-}
-
-data := ["hello", get_value()];
-
-println(data[0], " ", data[get_index()]);
-
-a := ["a", "b", "c"];
-println(a[-1]);
-
-println(a[0], a[1], a[2]);
-println(a[0], a[0+1], a[foo()]);
-
-fn foo() -> int
-{
-    return 2;
+for (int in ints) {
+    println(int + 4);
 }

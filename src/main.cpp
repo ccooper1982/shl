@@ -82,7 +82,6 @@ int main (int argc, char ** argv)
 
   if (script.issues->have_errors())
   {
-    std::cout << "Issues:\n";
     script.issues->dump(std::cout, *script.src);
     return STATUS_USER_ERR;
   }
@@ -91,7 +90,6 @@ int main (int argc, char ** argv)
 
   if (script.issues->have_errors())
   {
-    std::cout << "Issues:\n";
     script.issues->dump(std::cout, *script.src);
     return STATUS_USER_ERR;
   }

@@ -71,6 +71,9 @@ ExecutionResult Executor::execute(const NodeBlock& block, std::map<VarName, Vari
       case NodeType::LoopWhile:
         result = execute(block, static_cast<const LoopWhile&>(*node));
         break;
+      case NodeType::LoopForEach:
+        result = execute(block, static_cast<const LoopForEach&>(*node));
+        break;
       case NodeType::VariableDecl:
         execute(block, static_cast<const VariableDecl&>(*node));
         break;
@@ -100,6 +103,25 @@ ExecutionResult Executor::execute (const NodeBlock& block, const LoopWhile& loop
   while (is_true(execute(block, *loop.expr)))
   {
     if (result = execute(loop.body); result.returned) {
+      break;
+    }
+  }
+
+  return result;
+}
+
+
+ExecutionResult Executor::execute (const NodeBlock& block, const LoopForEach& loop)
+{
+  ExecutionResult result;
+
+  auto result_array = execute(block, *loop.iterable) ;
+
+  const auto array = std::get<std::shared_ptr<ShlArray>> (result_array.value);
+
+  for (const auto& item : array->items)
+  {
+    if (result = execute(loop.body, {{loop.var_name, item}}); result.returned) {
       break;
     }
   }

@@ -262,6 +262,7 @@ struct ResolvedSymbol
   std::string_view name;
   VarType type;
   bool is_ref{};
+  bool is_array{};
   uint32_t position{};
 };
 

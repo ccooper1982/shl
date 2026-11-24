@@ -17,7 +17,8 @@ enum class NodeType
   VariableDecl,
   VariableAssign,
   ConditionIf,
-  LoopWhile
+  LoopWhile,
+  LoopForEach
 };
 
 struct AstNode

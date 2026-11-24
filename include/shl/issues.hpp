@@ -38,8 +38,11 @@ enum class ErrorCode
   BinaryOperandsVoid,
   UnaryOperandInvalid,
   UnaryOperandVoid,
+  ArrayCannotInferType,
   ArrayItemTypeMismatch,
   ArrayIndexNotInt,
+  ArrayItemType,
+  ForEachIterable,
   ExprDivideByZero,
   ConditionNotBool,
   StringLiteralEscapes,
@@ -110,7 +113,8 @@ public:
     if (m_errors.empty())
       return;
 
-    os << ColorRed << src_path << " : ERRORS " << ColorReset << '\n';
+    os << src_path.string() << ":\n";
+    os << ColorRed << "ERRORS " << ColorReset << '\n';
 
     for (const auto& err : m_errors)
     {
@@ -313,7 +317,12 @@ namespace issue
 
   inline void array_items_empty (Issues& issues, const AstNode& node)
   {
-    issues.add_error("Array cannot be initialised empty. Cannot infer item type", node.source, ErrorCode::ArrayItemTypeMismatch);
+    issues.add_error("Array cannot be initialised empty. Cannot infer item type", node.source, ErrorCode::ArrayCannotInferType);
+  }
+
+  inline void array_item_type (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array item type invalid", node.source, ErrorCode::ArrayItemType);
   }
 
   inline void array_index_type (Issues& issues, const AstNode& node)
@@ -326,4 +335,8 @@ namespace issue
     issues.add_error("String literal has invalid escape character(s)", node.source, ErrorCode::StringLiteralEscapes);
   }
 
+  inline void foreach_iterable_type(Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Foreach iterable expression must be an array", node.source, ErrorCode::ForEachIterable);
+  }
 }

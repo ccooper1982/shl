@@ -42,7 +42,56 @@ void Semantics::process(Script& script)
   m_symbol_table.exit_scope();
 }
 
-void Semantics::process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope, const bool add_func_vars)
+
+// blocks //
+
+void Semantics::process_function_block(Context& ctx, const FunctionDef& def)
+{
+  m_symbol_table.enter_scope(&def.body);
+
+  if (m_symbol_table.has_function(def.name))
+  {
+    const auto& resolved_func = m_symbol_table.get_function(def.name);
+    const bool expect_return_expr = resolved_func.return_type != NativeType::Void &&
+                                    resolved_func.return_type != unresolved_type;
+
+    if (expect_return_expr && expression_count<Return>(def.body) == 0) {
+      issue::func_return_val_expected(ctx.issues, def);
+    }
+
+    // if param type is invalid, the function will not be in the symbol table
+    for(const auto& param : def.get_params()) {
+      m_symbol_table.add_variable(param, def.source.start);
+    }
+  }
+
+  process_block(ctx, def, def.body, false);
+
+  m_symbol_table.exit_scope();
+}
+
+void Semantics::process_loop_block(Context& ctx, const AstNode& parent, const LoopWhile& loop)
+{
+  m_symbol_table.enter_scope(&loop.body);
+
+  process_block(ctx, parent, loop.body, false);
+
+  m_symbol_table.exit_scope();
+}
+
+void Semantics::process_loop_block(Context& ctx, const AstNode& parent, const LoopForEach& loop, const VarType element_type)
+{
+  m_symbol_table.enter_scope(&loop.body);
+
+  m_symbol_table.add_variable(loop.var_name, element_type, loop.source.start);
+
+  process_block(ctx, parent, loop.body, false);
+
+  m_symbol_table.exit_scope();
+}
+
+
+void Semantics::process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope)
 {
   try
   {
@@ -50,37 +99,10 @@ void Semantics::process_block(Context& ctx, const AstNode& parent, const NodeBlo
       m_symbol_table.enter_scope(&block);
     }
 
-    // if inside a function def:
-    // - check a non-void return type has a return statement
-    // - add function defintions params to scope
-    if (add_func_vars && parent.is_node_type(NodeType::FunctionDef))
-    {
-      const auto& def = static_cast<const FunctionDef&>(parent);
-
-      if (m_symbol_table.has_function(def.name))
-      {
-        const auto& resolved_func = m_symbol_table.get_function(def.name);
-        const bool expect_return_expr = resolved_func.return_type != NativeType::Void &&
-                                        resolved_func.return_type != unresolved_type;
-
-        if (expect_return_expr && expression_count<Return>(def.body) == 0) {
-          issue::func_return_val_expected(ctx.issues, def);
-        }
-
-        // if param type is invalid, the function will not be in the symbol table
-        for(const auto& param : def.get_params()) {
-          m_symbol_table.add_variable(param, def.source.start);
-        }
-      }
-    }
-
     for(const auto& node : block.nodes() | vw::filter(is_node_executable))
     {
       switch (node->node_type())
       {
-        case NodeType::NodeBlock:
-          process_block(ctx, parent, static_cast<const NodeBlock&>(*node), true, false);
-          break;
         case NodeType::VariableDecl:
           process_variable_declaration(ctx, block, static_cast<const VariableDecl&>(*node));
           break;
@@ -93,6 +115,9 @@ void Semantics::process_block(Context& ctx, const AstNode& parent, const NodeBlo
         case NodeType::LoopWhile:
           process_while(ctx, parent, block, static_cast<const LoopWhile&>(*node));
           break;
+        case NodeType::LoopForEach:
+          process_for_each(ctx, parent, block, static_cast<const LoopForEach&>(*node));
+          break;
         case NodeType::Expression:
           handle_expression(ctx, parent, block, static_cast<const Expression&>(*node));
           break;
@@ -101,17 +126,18 @@ void Semantics::process_block(Context& ctx, const AstNode& parent, const NodeBlo
           break;
       }
     }
+
+    if (add_scope) {
+      m_symbol_table.exit_scope();
+    }
   }
   catch (const std::exception& ex)
   {
     std::cerr << ex.what();
     issue::compiler_error(ctx.issues, block);
   }
-
-  if (add_scope) {
-    m_symbol_table.exit_scope();
-  }
 }
+
 
 // Functions //
 
@@ -157,9 +183,9 @@ void Semantics::process_function_signatures(Context& ctx)
 
 void Semantics::process_function_bodies(Context& ctx, const NodeBlock& block)
 {
-  walk_nodes<FunctionDef>(block.nodes(), [this, &ctx](const FunctionDef& def)
+  walk_nodes<FunctionDef>(block.nodes(), [&ctx, this](const FunctionDef& def)
   {
-    process_block(ctx, def, def.body);
+    process_function_block(ctx, def);
   });
 }
 
@@ -175,7 +201,8 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
 
   if (decl.has_explicit_type())
   {
-    if (const auto type = m_symbol_table.get_type(decl.var_type); !type) {
+    if (const auto type = m_symbol_table.get_type(decl.var_type); !type)
+    {
       issue::unknown_variable_type(ctx.issues, decl);
       return;
     }
@@ -191,7 +218,8 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
   {
     init_type = handle_expression(ctx, decl, block, *decl.initialiser);
 
-    if (init_type == NativeType::Void) {
+    if (init_type == NativeType::Void)
+    {
       issue::var_init_void(ctx.issues, decl);
       return;
     }
@@ -204,7 +232,7 @@ void Semantics::process_variable_declaration(Context& ctx, const NodeBlock& bloc
     issue::var_init_type_differ(ctx.issues, decl);
   }
   else {
-    m_symbol_table.add_variable(decl.var_name, decl.has_initialiser() ? init_type : var_type, decl.source.start);
+    m_symbol_table.add_variable(decl.var_name, decl.has_initialiser() ? init_type : var_type, decl.source.start, decl.is_array);
   }
 }
 
@@ -458,13 +486,31 @@ VarType Semantics::process_expression(Context& ctx, const AstNode& parent, const
   }
   else
   {
+    auto element_type_valid = [&ctx](const Expression& expr)
+    {
+      if (expr.is_literal() || expr.is_expr_type(ExpressionType::FuncCall) || expr.is_expr_type(ExpressionType::IndexedVariable)) {
+        return true;
+      }
+
+      issue::array_item_type(ctx.issues, expr);
+      return false;
+    };
+
     const std::span<const NodePtr<Expression>> items {expr.items} ;
+
+    if (!element_type_valid(*items.front())) {
+      return unresolved_type;
+    }
 
     // the type of each element must be equal, so get the first and check remaining are equal
     const auto element_type = handle_expression(ctx, parent, block, *items.front());
 
     for (const auto& item : items.subspan(1))
     {
+      if (!element_type_valid(*item)) {
+        return unresolved_type;
+      }
+
       if (element_type != handle_expression(ctx, parent, block, *item))
       {
         issue::array_item_mismatch(ctx.issues, expr);
@@ -635,7 +681,7 @@ void Semantics::process_condition(Context& ctx, const AstNode& parent, const Nod
       return false;
     }
     else {
-      process_block(ctx, parent, cb.body, true, false);
+      process_block(ctx, parent, cb.body);
     }
     return true;
   };
@@ -650,7 +696,7 @@ void Semantics::process_condition(Context& ctx, const AstNode& parent, const Nod
 
     // else { block }
     if (cond.else_body) {
-      process_block(ctx, parent, *cond.else_body, true, false);
+      process_block(ctx, parent, *cond.else_body);
     }
   }
 }
@@ -665,6 +711,29 @@ void Semantics::process_while(Context& ctx, const AstNode& parent, const NodeBlo
     issue::condition_not_bool(ctx.issues, *loop.expr);
   }
   else {
-    process_block(ctx, parent, loop.body, true, false);
+    process_loop_block(ctx, parent, loop);
+  }
+}
+
+void Semantics::process_for_each(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopForEach& loop)
+{
+  if (!m_symbol_table.has_visible_variable(loop.iterable_name, block, loop.iterable->source.start)) {
+    issue::var_unknown(ctx.issues, parent, loop.iterable_name);
+  }
+  else
+  {
+    const auto iterable_type = m_symbol_table.get_variable(loop.iterable_name, block);
+
+    if (!iterable_type.is_array) {
+      issue::foreach_iterable_type(ctx.issues, *loop.iterable);
+    }
+    else
+    {
+      const auto element_type = handle_expression(ctx, parent, block, static_cast<const ArrayLiteral&>(*loop.iterable));
+
+      if (element_type) {
+        process_loop_block(ctx, parent, loop, element_type);
+      }
+    }
   }
 }

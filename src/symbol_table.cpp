@@ -12,12 +12,12 @@ void SymbolTable::add_function (const FunctionDef& def, std::vector<ResolvedSymb
                                });
 }
 
-void SymbolTable::add_variable(const std::string_view name, const VarType type, const uint32_t position)
+void SymbolTable::add_variable(const std::string_view name, const VarType type, const uint32_t position, const bool is_array)
 {
   if (m_scope_tracker.empty())
     throw std::runtime_error{"SymbolTable::add_variable(): scope tracker is empty"};
 
-  m_scope_tracker.top()->vars.emplace(name, ResolvedSymbol{.name = name, .type = type, .position = position});
+  m_scope_tracker.top()->vars.emplace(name, ResolvedSymbol{.name = name, .type = type, .is_array = is_array, .position = position});
 }
 
 

@@ -42,7 +42,6 @@ struct NodeBlock : public AstNode
   const Nodes& nodes() const { return m_nodes; }
   size_t node_count() const  { return m_nodes.size(); }
 
-
   void dump (std::ostream& os, [[maybe_unused]] const uint8_t tab = 0) const override
   {
     for (const auto& n : m_nodes)
@@ -132,6 +131,26 @@ struct LoopWhile : public AstNode
   NodePtr<Expression> expr;
   NodeBlock body;
 };
+
+struct LoopForEach : public AstNode
+{
+  LoopForEach() : AstNode(NodeType::LoopForEach)
+  {}
+
+  void dump (std::ostream& os, const uint8_t tab = 0) const override
+  {
+    os << "for (" << var_name << "in ";
+    iterable->dump(os, tab+1);
+    os << ")\n";
+    body.dump(os, tab+1);
+  }
+
+  std::string_view var_name;
+  std::string_view iterable_name;
+  NodePtr<Expression> iterable;
+  NodeBlock body;
+};
+
 
 // Functions Definition //
 
@@ -280,6 +299,7 @@ struct VariableDecl : public AstNode
   std::string_view var_name;
   std::string_view var_type;
   std::unique_ptr<Expression> initialiser;
+  bool is_array{};
 
   private:
     DeclType decl_type;
@@ -342,5 +362,6 @@ inline bool is_node_executable (const std::unique_ptr<AstNode>& node)
           node->node_type() == NodeType::VariableDecl ||
           node->node_type() == NodeType::VariableAssign ||
           node->node_type() == NodeType::ConditionIf ||
-          node->node_type() == NodeType::LoopWhile ;
+          node->node_type() == NodeType::LoopWhile ||
+          node->node_type() == NodeType::LoopForEach;
 }
