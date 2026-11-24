@@ -25,6 +25,7 @@ filesystem_rmv();
 filesystem_type();
 format();
 arrays();
+for_each();
 
 # tidy up
 exec(proc("rm", "-rf", tests_wd));
@@ -117,6 +118,15 @@ fn format()
     result := exec_stdout_trim(exec(pipeline));
 
     check_str("1+2=3 true 3.14", result);
+}
+
+fn for_each()
+{
+    script := scripts_path + "/foreach.shl";
+    pipeline := proc(shl, script);
+    result := exec_stdout_trim(exec(pipeline));
+
+    check_str("abc\n123", result);
 }
 
 fn arrays()
