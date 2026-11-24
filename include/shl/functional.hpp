@@ -8,6 +8,7 @@
 #include <type_traits>
 
 #include <shl/common.hpp>
+#include <shl/exceptions.hpp>
 
 struct FunctionDef; // forward decl
 
@@ -34,14 +35,24 @@ struct ExecResult
   bool operator==(const ExecResult&) const = default;
 };
 
+
+struct ShlArray; // forward decl
+
 using ShlInt = int64_t;
 using ShlDec = double;
 using ShlBool = bool;
 using ShlString = std::string;
 
 using VarName = std::string_view;
-using VarValue = std::variant<std::monostate, ShlString, ShlInt, ShlDec, ShlBool, Process, Pipeline, ExecResult>;
+using VarValue = std::variant<std::monostate,
+                              ShlString, ShlInt, ShlDec, ShlBool,
+                              Process, Pipeline, ExecResult,
+                              std::shared_ptr<ShlArray>>;
 
+struct ShlArray
+{
+  std::vector<VarValue> items;
+};
 
 template<typename T1, typename T2, typename ShlType>
 concept AreSame = std::is_same_v<T1, ShlType> && std::is_same_v<T2, ShlType> ;
@@ -62,10 +73,13 @@ template<typename T>
 concept IsShlString = std::is_same_v<T, ShlString>;
 
 template<typename T>
+concept IsShlArray = std::is_same_v<T, std::shared_ptr<ShlArray>>;
+
+template<typename T>
 concept IsShlSimpleType = std::disjunction_v<std::is_same<T, ShlString>, std::is_same<T, ShlInt>, std::is_same<T, ShlDec>, std::is_same<T, ShlBool>>;
 
 template<typename T>
-concept IsShlType = IsShlSimpleType<T> || std::disjunction_v<std::is_same<T, Process>, std::is_same<T, Pipeline>, std::is_same<T, ExecResult>>;
+concept IsShlType = IsShlSimpleType<T> || IsShlArray<T> || std::disjunction_v<std::is_same<T, Process>, std::is_same<T, Pipeline>, std::is_same<T, ExecResult>>;
 
 template<typename T1, typename T2>
 concept AreShlInteger = AreSame<T1, T2, ShlInt>;
@@ -79,6 +93,8 @@ concept AreShlString = AreSame<T1, T2, ShlString>;
 template<typename T1, typename T2>
 concept AreShlArithmetic = IsShlArithmetic<T1> && IsShlArithmetic<T2> ;
 
+template<typename Op>
+concept IsStringOperation = std::disjunction_v<std::is_same<Op, std::plus<>>, std::is_same<Op, std::equal_to<>>, std::is_same<Op, std::not_equal_to<>>>;
 
 
 enum class NativeType
@@ -102,23 +118,31 @@ struct UserType
   std::string_view name;
 };
 
+// TODO decide if shl supports user types. If not, rip out
 struct VarType
 {
-  VarType() : type (NativeType::Unset)
+  VarType() : m_type (NativeType::Unset)
   {}
 
-  VarType(const NativeType t) : type (t)
+  VarType(const NativeType t) : m_type (t)
   {}
 
-  const auto& value() const
+  const auto& value() const { return m_type; }
+
+  bool is_array() const
   {
-    return type;
+    return m_is_array;
+  }
+
+  void is_array(const bool array)
+  {
+    m_is_array = array;
   }
 
   template<typename T>
   const std::optional<T> value_as() const
   {
-    if (const auto param_type = std::get_if<T>(&type); param_type)
+    if (const auto param_type = std::get_if<T>(&m_type); param_type)
       return *param_type;
     return std::nullopt;
   }
@@ -126,7 +150,7 @@ struct VarType
   template<typename T>
   bool is_type() const requires(std::is_same_v<T, NativeType>)
   {
-    return std::holds_alternative<T>(type);
+    return std::holds_alternative<T>(m_type);
   }
 
   bool is_type(const NativeType t) const
@@ -140,7 +164,8 @@ struct VarType
   }
 
 private:
-  std::variant<NativeType, UserType> type;
+  std::variant<NativeType, UserType> m_type;
+  bool m_is_array{};
 };
 
 
@@ -246,6 +271,7 @@ struct ResolvedSymbol
   std::string_view name;
   VarType type;
   bool is_ref{};
+  // bool is_array{};
   uint32_t position{};
 };
 
@@ -303,4 +329,33 @@ auto create_function(std::string_view name, NativeType return_type, ParamMode pa
 
   ResolvedFunction func {.params = {}, .return_type = return_type, .param_mode = param_mode};
   return FunctionEntry {name, {std::move(func), F, min_args}};
+}
+
+
+inline ShlString unescape_string(const std::string_view input)
+{
+  ShlString result;
+  result.reserve(input.size());
+
+  for (std::size_t i = 0; i < input.size(); ++i)
+  {
+    if (input[i] != '\\' || i + 1 == input.size())
+    {
+      result += input[i];
+      continue;
+    }
+
+    switch (input[++i])
+    {
+      case 'n':  result += '\n'; break;
+      case 't':  result += '\t'; break;
+      case 'r':  result += '\r'; break;
+      case '\\': result += '\\'; break;
+      case '"':  result += '"';  break;
+      default:
+        throw RuntimeError{"Unknown string escape sequence"};
+    }
+  }
+
+  return result;
 }

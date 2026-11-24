@@ -1,7 +1,14 @@
+strs := ["a", "b", "c"];
 
-i :int;
-
-while (i < 5) {
-    println (fmt("file_{}.txt", i));
-    ++i;
+for (str in strs) {
+    print(str);
 }
+
+# fn foo() -> str[]
+# {
+#    return ["a", "b"];
+# }
+
+# for (a in foo()) {
+#    println(a);
+#}

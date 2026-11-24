@@ -77,8 +77,7 @@ inline VarValue do_binary_operator (const VarValue& lhs, const VarValue& rhs, Op
     // if invalid shl, the semantic checker will raise an issue, preventing execution
     constexpr bool is_arithmetic = AreShlArithmetic<L,R>;
     constexpr bool is_boolean = AreSame<L,R,ShlBool>;
-    constexpr bool is_strings = AreSame<L,R,ShlString> && (std::is_same_v<OpF, std::plus<>> || std::is_same_v<OpF, std::equal_to<>>);
-
+    constexpr bool is_strings = AreSame<L,R,ShlString> && IsStringOperation<OpF>;
 
     if constexpr (!(is_arithmetic || is_strings || is_boolean)) {
       throw std::logic_error{"Called do_binary_operator() on unsupported type"};
@@ -86,7 +85,7 @@ inline VarValue do_binary_operator (const VarValue& lhs, const VarValue& rhs, Op
     else if constexpr (is_arithmetic) {
       return do_binary_arithmetic(val_l, val_r, op);
     }
-    else {
+    else if constexpr (!IsShlArray<L> || !IsShlArray<R>){
       return op(val_l, val_r);
     }
   };
@@ -192,9 +191,9 @@ inline VarValue operator|(const VarValue& lhs, const VarValue& rhs)
     },
     [&](const Pipeline& left, const Pipeline& right) -> VarValue
     {
-        Pipeline result {left};
-        result.processes.insert_range(result.processes.end(), right.processes);
-        return result;
+      Pipeline result {left};
+      result.processes.insert_range(result.processes.end(), right.processes);
+      return result;
     },
     [&](const auto&, const auto&) -> VarValue
     {
@@ -232,17 +231,20 @@ inline VarValue do_unary_operator (const VarValue& lhs, OpF op)
   return std::visit(handle, lhs);
 }
 
-inline VarValue operator!(const VarValue& lhs)
+template<typename T> requires std::same_as<std::remove_cvref_t<T>, VarValue>
+inline VarValue operator!(T&& lhs)
 {
   return do_unary_operator(lhs, std::logical_not<>{});
 }
 
-inline VarValue operator-(const VarValue& lhs)
+template<typename T> requires std::same_as<std::remove_cvref_t<T>, VarValue>
+inline VarValue operator-(T&& lhs)
 {
   return do_unary_operator(lhs, std::negate<>{});
 }
 
-inline VarValue operator~(const VarValue& lhs)
+template<typename T> requires std::same_as<std::remove_cvref_t<T>, VarValue>
+inline VarValue operator~(T&& lhs)
 {
   return do_unary_operator(lhs, std::bit_not<>{});
 }

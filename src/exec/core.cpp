@@ -1,4 +1,5 @@
 
+#include <shl/ast/expressions.hpp>
 #include <shl/common.hpp>
 #include <shl/exceptions.hpp>
 #include <shl/exec/core.hpp>
@@ -22,11 +23,11 @@
 
 namespace core {
 
-VarValue print(RuntimeContext&, const std::span<const VarValue> args)
+VarValue print(RuntimeContext& ctx, const std::span<const VarValue> args)
 {
   for(const auto& val : args)
   {
-    std::visit([](const auto& val)
+    std::visit([&](const auto& val)
       {
         using T = std::remove_cvref_t<decltype(val)>;
 
@@ -34,10 +35,25 @@ VarValue print(RuntimeContext&, const std::span<const VarValue> args)
           std::print("Executable: {} , Args: {}", val.executable, val.args.size()); // TODO lazy
         }
         else if constexpr (std::is_same_v<T, Pipeline>) {
-          std::print("Pipeline: Processes: {} ", val.processes.size());
+          std::print("Pipeline: Processes: {} ", val.processes.size());  // TODO lazy
         }
         else if constexpr (std::is_same_v<T, ExecResult>) {
           std::print("{}", val.stdout);
+        }
+        else if constexpr (IsShlArray<T>)
+        {
+          std::print("[");
+
+          for (std::size_t i = 0; i < val->items.size(); ++i)
+          {
+            if (i != 0) {
+              std::print(", ");
+            }
+
+            print(ctx, std::span{&val->items[i], 1});
+          }
+
+          std::print("]");
         }
         else if constexpr (!std::is_same_v<T, std::monostate>) {
           std::print("{}", val);

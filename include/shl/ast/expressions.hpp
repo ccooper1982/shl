@@ -43,7 +43,9 @@ enum class ExpressionType
   Unary,
   FuncCall,
   VariableUse,
-  Return
+  Return,
+  Array,
+  IndexedVariable
 };
 
 
@@ -165,9 +167,11 @@ struct StringLiteral : public Expression
     os << "str = \"" << v << '\"';
   }
 
-  ShlString value() const
+  ShlString value(const bool unescape = true) const
   {
-    return ShlString{v};
+    if (!unescape)
+      return ShlString{v};
+    return unescape_string(v);
   }
 
   std::string_view v;
@@ -233,6 +237,35 @@ struct BooleanLiteral : public Expression
   ShlBool v;
 };
 
+struct ArrayLiteral : public Expression
+{
+  static constexpr ExpressionType ExprType = ExpressionType::Array;
+
+  explicit ArrayLiteral(std::vector<NodePtr<Expression>> items)
+    : Expression(ExprType, false)
+    , items(std::move(items))
+  {}
+
+  bool is_convertible_to(const NativeType t) const override
+  {
+    return t == NativeType::Bool;
+  }
+
+  VarType get_var_type() const override
+  {
+    return NativeType::Bool;
+  }
+
+  void dump (std::ostream& os, [[maybe_unused]] const uint8_t tab = 0) const override
+  {
+    os << "array \n";
+    for(const auto& item : items) {
+      item->dump(os, tab);
+    }
+  }
+
+  std::vector<NodePtr<Expression>> items;
+};
 
 struct BinaryExpression : public Expression
 {
@@ -409,6 +442,31 @@ struct VariableUse : public Expression
 };
 
 
+struct IndexedVariable : public Expression
+{
+  static constexpr ExpressionType ExprType = ExpressionType::IndexedVariable;
+
+  IndexedVariable() : Expression(ExprType, false)
+  {}
+
+  VarType get_var_type() const override
+  {
+    throw std::runtime_error{"get_var_type() called on IndexedVariable"};
+  }
+
+  void dump (std::ostream& os, [[maybe_unused]] const uint8_t tab = 0) const override
+  {
+    os << name << '[' ;
+    index_expr->dump(os, tab);
+    os << ']';
+  }
+
+  std::string_view name;
+  NodePtr<Expression> index_expr;
+};
+
+
+
 inline std::string_view to_string(const Expression& expr);
 
 
@@ -486,5 +544,9 @@ inline std::string_view to_string(const Expression& expr)
       return "VariableReference";
     case Return:
       return "Return";
+    case Array:
+      return "Array";
+    case IndexedVariable:
+      return "IndexedVariable";
   }
 }

@@ -1,5 +1,6 @@
 #include "shl/ast/ast.hpp"
 #include "shl/ast/expressions.hpp"
+#include "shl/functional.hpp"
 #include <algorithm>
 #include <gtest/gtest.h>
 
@@ -493,6 +494,42 @@ TEST(Ast, VariableDeclInit)
   ASSERT_EQ(var_decl_c.get_decl_type(), VariableDecl::DeclType::InferredType);
   ASSERT_EQ(var_decl_d.get_decl_type(), VariableDecl::DeclType::ExplicitInit);
 }
+
+
+TEST(Ast, VariableDeclArray)
+{
+  const std::string_view src = R"(
+    a := ["a", "b", "c"];
+    b := [1, 2, 3];
+    c := [true, false];
+  )";
+
+  Parser parser;
+  auto script = parser.parse(src);
+
+  const auto& ast = *script.ast;
+
+  ASSERT_EQ(ast.block.nodes().size(), 3);
+  ASSERT_EQ(ast.block.nodes()[0]->node_type(), NodeType::VariableDecl);
+  ASSERT_EQ(ast.block.nodes()[1]->node_type(), NodeType::VariableDecl);
+  ASSERT_EQ(ast.block.nodes()[2]->node_type(), NodeType::VariableDecl);
+
+  const auto& decl_a = static_cast<const VariableDecl&>(*ast.block.nodes()[0]);
+  const auto& decl_b = static_cast<const VariableDecl&>(*ast.block.nodes()[1]);
+  const auto& decl_c = static_cast<const VariableDecl&>(*ast.block.nodes()[2]);
+
+  ASSERT_EQ(decl_a.get_decl_type(), VariableDecl::DeclType::InferredType);
+  ASSERT_EQ(decl_b.get_decl_type(), VariableDecl::DeclType::InferredType);
+  ASSERT_EQ(decl_c.get_decl_type(), VariableDecl::DeclType::InferredType);
+
+  ASSERT_TRUE(decl_a.initialiser->is_expr_type(ExpressionType::Array));
+  ASSERT_TRUE(decl_b.initialiser->is_expr_type(ExpressionType::Array));
+  ASSERT_TRUE(decl_c.initialiser->is_expr_type(ExpressionType::Array));
+
+  // the ArrayLiteral::item_type is set by semantics rather than the parser because
+  // it requires parsing the expressions
+}
+
 
 TEST(Ast, Condition)
 {

@@ -17,7 +17,7 @@ void SymbolTable::add_variable(const std::string_view name, const VarType type, 
   if (m_scope_tracker.empty())
     throw std::runtime_error{"SymbolTable::add_variable(): scope tracker is empty"};
 
-  m_scope_tracker.top()->vars.emplace(name, ResolvedSymbol{.name = name, .type = type, .position = position});
+  m_scope_tracker.top()->vars.emplace(name, ResolvedSymbol{.name = name, .type = type, .position = position });
 }
 
 

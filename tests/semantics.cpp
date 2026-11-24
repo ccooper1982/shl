@@ -304,23 +304,40 @@ TEST(Semantics, FuncDef_ReturnValid)
 
 TEST(Semantics, FuncDef_ReturnInvalid)
 {
-  const std::string_view src = R"(
-    fn foo1() -> int { return "one"; }
-    fn foo2() { return "one"; }
-  )";
+  {
+    const std::string_view src = R"(
+      fn foo1() -> int { return "one"; }
+      fn foo2() { return "one"; }
+    )";
 
-  Parser parser;
-  auto script = parser.parse(src);
+    Parser parser;
+    auto script = parser.parse(src);
 
-  Semantics sem;
-  sem.process(script);
+    Semantics sem;
+    sem.process(script);
 
-  ASSERT_TRUE(script.issues->have_errors());
-  ASSERT_EQ(script.issues->get_count(ErrorCode::FunctionReturnExpression), 2);
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::FunctionReturnExpression), 2);
+  }
+
+  {
+    const std::string_view src = R"(
+      fn foo1() -> str[] { return ["a", "b"] ; }
+    )";
+
+    Parser parser;
+    Semantics sem;
+
+    auto script = parser.parse(src);
+    sem.process(script);
+
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::UnknownReturnType), 1);
+  }
 }
 
 
-TEST(Semantics, VariableDecl)
+TEST(Semantics, VariableDecl_UnknownType)
 {
   {
     const std::string_view src = R"(
@@ -358,23 +375,28 @@ TEST(Semantics, VariableDecl)
     ASSERT_TRUE(script.issues->have_errors());
     ASSERT_EQ(script.issues->get_count(ErrorCode::UnknownVarType), 2);
   }
+}
 
-  {
-    const std::string_view src = R"(
-      fn foo() {}
-      a := foo();
-    )";
+TEST(Semantics, VariableDecl_InitVoid)
+{
+  const std::string_view src = R"(
+    fn foo() {}
+    a := foo();
+  )";
 
-    Parser parser;
-    auto script = parser.parse(src);
+  Parser parser;
+  auto script = parser.parse(src);
 
-    Semantics sem;
-    sem.process(script);
+  Semantics sem;
+  sem.process(script);
 
-    ASSERT_TRUE(script.issues->have_errors());
-    ASSERT_EQ(script.issues->get_count(ErrorCode::VariableInitVoid), 1);
-  }
+  ASSERT_TRUE(script.issues->have_errors());
+  ASSERT_EQ(script.issues->get_count(ErrorCode::VariableInitVoid), 1);
+}
 
+
+TEST(Semantics, VariableDecl_Valid)
+{
   {
     const std::string_view src = R"(
       fn foo() -> int { return 1; }
@@ -405,6 +427,89 @@ TEST(Semantics, VariableDecl)
     sem.process(script);
 
     ASSERT_FALSE(script.issues->have_errors());
+  }
+}
+
+
+TEST(Semantics, VariableDecl_ArrayValid)
+{
+  const std::string_view src = R"(
+    a := ["a", "b", "c"];
+    b := ["hello", get_value()];
+    c := ["hello", a[0]];
+
+    println(a[0]);
+    println(b[0], b[get_index()]);
+
+    fn get_value() -> str { return "world"; }
+    fn get_index() -> int { return 1; }
+  )";
+
+  Parser parser;
+  auto script = parser.parse(src);
+
+  Semantics sem;
+  sem.process(script);
+
+  ASSERT_FALSE(script.issues->have_errors());
+}
+
+TEST(Semantics, VariableDecl_ArrayInvalid)
+{
+  {
+    const std::string_view src = R"(
+      a := ["a", "b", "c"];
+      b := ["a", 1];
+      c := ["a", true];
+      d := [["a"]];
+      e := ["c", a];
+      f := [a, "c"];
+    )";
+
+    Parser parser;
+    auto script = parser.parse(src);
+
+    Semantics sem;
+    sem.process(script);
+
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayItemTypeMismatch), 2);
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayItemType), 3);
+  }
+
+  {
+    const std::string_view src = R"(
+      a := [];
+    )";
+
+    Parser parser;
+    auto script = parser.parse(src);
+
+    Semantics sem;
+    sem.process(script);
+
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayCannotInferType), 1);
+  }
+
+  {
+    const std::string_view src = R"(
+      a := [1,2,3];
+
+      println(a["zero"]);
+      println(a[foo()]);
+
+      fn foo() -> bool { return false; }
+    )";
+
+    Parser parser;
+    auto script = parser.parse(src);
+
+    Semantics sem;
+    sem.process(script);
+
+    ASSERT_TRUE(script.issues->have_errors());
+    ASSERT_EQ(script.issues->get_count(ErrorCode::ArrayIndexNotInt), 2);
   }
 }
 
@@ -725,4 +830,16 @@ TEST(Semantics, LogicalOperators)
     ASSERT_TRUE(script.issues->have_errors());
     ASSERT_EQ(script.issues->get_count(ErrorCode::BinaryOperandsInvalid), 2);
   }
+}
+
+
+TEST(Semantics, StringLiteral_Escapes)
+{
+  ASSERT_TRUE(valid_string_escapes(R"(hello\nworld)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\tworld)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\\world)"));
+  ASSERT_TRUE(valid_string_escapes(R"(hello\"world)"));
+
+  ASSERT_FALSE(valid_string_escapes(R"(hello\qworld)"));
+  ASSERT_FALSE(valid_string_escapes("hello\\"));
 }

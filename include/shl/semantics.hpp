@@ -1,5 +1,6 @@
 #pragma once
 
+#include "shl/functional.hpp"
 #include <shl/ast/ast_node.hpp>
 #include <shl/ast/expressions.hpp>
 #include <concepts>
@@ -10,6 +11,10 @@
 #include <shl/common.hpp>
 #include <shl/issues.hpp>
 #include <shl/symbol_table.hpp>
+
+
+
+bool valid_string_escapes(const std::string_view str);
 
 
 ///
@@ -42,25 +47,30 @@ private:
   template<typename NodeT>
   using NodeHandler = std::function<void(const NodeT&)>;
 
-  void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true, const bool add_func_vars = true);
+  // blocks
+  void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true);
+  // void process_block(Context& ctx, const AstNode& parent, const NodeBlock& block, const bool add_scope = true, const bool add_func_vars = true);
+  void process_function_block(Context& ctx, const FunctionDef& def);
+  void process_loop_block(Context& ctx, const AstNode& parent, const LoopWhile& loop);
+  void process_loop_block(Context& ctx, const AstNode& parent, const LoopForEach& loop, const VarType element_type);
 
   // functions
   void process_function_signatures(Context& ctx);
   void process_function_bodies(Context& ctx, const NodeBlock& block);
   bool process_function_call_argument(Context& ctx, const AstNode& parent, const NodeBlock& block, const FunctionCall& call, const size_t param_index);
 
-
   // variables
   void process_variable_declaration(Context& ctx, const NodeBlock& block, const VariableDecl& decl);
   void process_variable_assign(Context& ctx, const NodeBlock& block, const VariableAssign& assign);
 
-  // TODO what's the parent param actually used for?
   // expressions
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const FunctionCall& expr);
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const VariableUse& expr);
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const UnaryExpression& expr);
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const BinaryExpression& expr);
   VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const Return& expr);
+  VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const ArrayLiteral& expr);
+  VarType process_expression(Context& ctx, const AstNode& parent, const NodeBlock& block, const IndexedVariable& expr);
 
   // operators
   VarType process_operator(Context& ctx, const VarType& operand_type, const UnaryExpression& expr);
@@ -71,6 +81,7 @@ private:
 
   // loops
   void process_while(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopWhile& loop);
+  void process_for_each(Context& ctx, const AstNode& parent, const NodeBlock& block, const LoopForEach& loop);
 
   // utils
   template<typename NodeT, typename Handler>
@@ -115,8 +126,9 @@ private:
     // TODO walk_nodes() cannot accept multiple node types
     for (const auto& node : block.nodes())
     {
-      if (node->is_node_type(NodeType::NodeBlock))
+      if (node->is_node_type(NodeType::NodeBlock)){
         count += expression_count<ExprT>(static_cast<const NodeBlock&> (*node));
+      }
       else if (node->is_node_type(NodeType::ConditionIf))
       {
         const auto& cond = static_cast<const ConditionIf&> (*node);
@@ -131,12 +143,17 @@ private:
           count += expression_count<ExprT>(*cond.else_body);
         }
       }
+      else if (node->is_node_type(NodeType::LoopWhile))
+      {
+        const auto& loop = static_cast<const LoopWhile&> (*node);
+        count += expression_count<ExprT>(loop.body);
+      }
     }
 
     return count;
   }
 
-  VarType handle_expression (Context& ctx, const AstNode& parent, const NodeBlock& block, const Expression& expr)
+  inline VarType handle_expression (Context& ctx, const AstNode& parent, const NodeBlock& block, const Expression& expr)
   {
     switch (expr.expr_type())
     {
@@ -150,11 +167,56 @@ private:
         return process_expression(ctx, parent, block, static_cast<const UnaryExpression&>(expr));
       case ExpressionType::Binary:
         return process_expression(ctx, parent, block, static_cast<const BinaryExpression&>(expr));
+      case ExpressionType::Array:
+        return process_expression(ctx, parent, block, static_cast<const ArrayLiteral&>(expr));
+      case ExpressionType::IndexedVariable:
+        return process_expression(ctx, parent, block, static_cast<const IndexedVariable&>(expr));
       default:
-        return expr.get_var_type(); // literal
+      {
+        // literal expression. Validate escape sequences in strings
+        if (expr.is_expr_type(ExpressionType::String))
+        {
+          const auto str = static_cast<const StringLiteral&>(expr);
+          if (!valid_string_escapes(str.v))
+          {
+            issue::str_literal_escapes(ctx.issues, expr);
+            return unresolved_type;
+          }
+        }
+        return expr.get_var_type();
+      }
     }
   }
 
 private:
   SymbolTable m_symbol_table;
 };
+
+
+inline bool valid_string_escapes(const std::string_view str)
+{
+  for (std::size_t i = 0; i < str.size(); ++i)
+  {
+    if (str[i] != '\\') {
+      continue;
+    }
+    // trailing backslash
+    if (++i == str.size()) {
+      return false;
+    }
+
+    switch (str[i])
+    {
+      case 'n':
+      case 't':
+      case 'r':
+      case '\\':
+      case '"':
+        break;
+      default:
+        return false;
+    }
+  }
+
+  return true;
+}

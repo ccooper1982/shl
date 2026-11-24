@@ -10,6 +10,7 @@
 
 #include <shl/ast/ast_node.hpp>
 
+#include "shl/ast/expressions.hpp"
 #include "tree_sitter/api.h"
 
 enum class ErrorCode
@@ -37,8 +38,14 @@ enum class ErrorCode
   BinaryOperandsVoid,
   UnaryOperandInvalid,
   UnaryOperandVoid,
+  ArrayCannotInferType,
+  ArrayItemTypeMismatch,
+  ArrayIndexNotInt,
+  ArrayItemType,
+  ForEachIterable,
   ExprDivideByZero,
   ConditionNotBool,
+  StringLiteralEscapes,
   ReturnFromRoot,
   Unsupported,
   SyntaxError,
@@ -106,7 +113,8 @@ public:
     if (m_errors.empty())
       return;
 
-    os << ColorRed << src_path << " : ERRORS " << ColorReset << '\n';
+    os << src_path.string() << ":\n";
+    os << ColorRed << "ERRORS " << ColorReset << '\n';
 
     for (const auto& err : m_errors)
     {
@@ -294,11 +302,41 @@ namespace issue
 
   inline void return_from_root (Issues& issues, const AstNode& node)
   {
-    issues.add_error("Cannot return from script root", node.source, ErrorCode::ReturnFromRoot);
+    issues.add_error("Cannot return from script root. Use exit().", node.source, ErrorCode::ReturnFromRoot);
   }
 
   inline void expr_divide_by_zero (Issues& issues, const AstNode& node)
   {
     issues.add_error("Divide by 0", node.source, ErrorCode::ExprDivideByZero);
+  }
+
+  inline void array_item_mismatch (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array items are not the same type", node.source, ErrorCode::ArrayItemTypeMismatch);
+  }
+
+  inline void array_items_empty (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array cannot be initialised empty. Cannot infer item type", node.source, ErrorCode::ArrayCannotInferType);
+  }
+
+  inline void array_item_type (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array item type invalid", node.source, ErrorCode::ArrayItemType);
+  }
+
+  inline void array_index_type (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Array index must be an int", node.source, ErrorCode::ArrayIndexNotInt);
+  }
+
+  inline void str_literal_escapes (Issues& issues, const AstNode& node)
+  {
+    issues.add_error("String literal has invalid escape character(s)", node.source, ErrorCode::StringLiteralEscapes);
+  }
+
+  inline void foreach_iterable_type(Issues& issues, const AstNode& node)
+  {
+    issues.add_error("Foreach iterable expression must be an array", node.source, ErrorCode::ForEachIterable);
   }
 }

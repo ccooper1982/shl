@@ -24,7 +24,8 @@ filesystem_create();
 filesystem_rmv();
 filesystem_type();
 format();
-
+arrays();
+for_each();
 
 # tidy up
 exec(proc("rm", "-rf", tests_wd));
@@ -119,6 +120,25 @@ fn format()
     check_str("1+2=3 true 3.14", result);
 }
 
+fn for_each()
+{
+    script := scripts_path + "/foreach.shl";
+    pipeline := proc(shl, script);
+    result := exec_stdout_trim(exec(pipeline));
+
+    check_str("abc\n123", result);
+}
+
+fn arrays()
+{
+    script := scripts_path + "/array.shl";
+    pipeline := proc(shl, script, "one", "two");
+    result := exec_stdout_trim(exec(pipeline));
+
+    check_str("hello world\n[one, two]", result);
+}
+
+
 # utils
 fn rmv_wd(wd: str, create: bool) -> bool
 {
@@ -141,10 +161,7 @@ fn rmv_wd(wd: str, create: bool) -> bool
 
 fn check_bool(expected: bool, result: bool)
 {
-    if (expected == result) {
-        println ("PASS: ", result);
-    }
-    else
+    if (expected != result)
     {
         println ("FAIL: ", result);
         exit(1);
@@ -153,10 +170,7 @@ fn check_bool(expected: bool, result: bool)
 
 fn check_int(expected: int, result: int)
 {
-    if (expected == result) {
-        println ("PASS: ", result);
-    }
-    else
+    if (expected != result)
     {
         println ("FAIL: ", result);
         exit(1);
@@ -165,10 +179,7 @@ fn check_int(expected: int, result: int)
 
 fn check_str(expected: str, result: str)
 {
-    if (expected == result) {
-        println ("PASS: ", result);
-    }
-    else
+    if (expected != result)
     {
         println ("FAIL: ", result);
         exit(1);
